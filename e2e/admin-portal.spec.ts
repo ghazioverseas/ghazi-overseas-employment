@@ -14,7 +14,7 @@ test.describe("Admin Portal Pages E2E Tests", () => {
 
   test("should render Admin Dashboard with 8 summary metric cards", async ({ page }) => {
     await page.goto("/admin/dashboard");
-    await expect(page.getByText(/Admin Control Center/i).first()).toBeVisible();
+    await expect(page.getByText(/Admin Intelligence Control Center|Admin Control Center/i).first()).toBeVisible();
     await expect(page.getByText(/Total Candidates/i).first()).toBeVisible();
     await expect(page.getByText(/Pending Applications/i).first()).toBeVisible();
     await expect(page.getByText(/Approved Applications/i).first()).toBeVisible();

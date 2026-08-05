@@ -40,10 +40,9 @@ test.describe("Candidate Portal Pages E2E Tests", () => {
     await expect(page.getByLabel(/Transaction Reference ID/i)).toBeVisible();
   });
 
-  test("should render Candidate Tracker 6-step timeline", async ({ page }) => {
+  test("should render Candidate Tracker timeline", async ({ page }) => {
     await page.goto("/candidate/tracker");
-    await expect(page.getByRole("heading", { name: /Application Status Tracker/i })).toBeVisible();
-    await expect(page.getByText(/1. Registration Complete/i)).toBeVisible();
-    await expect(page.getByText(/6. Application Approved/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Recruitment Pipeline Tracker|Application Status Tracker/i })).toBeVisible();
+    await expect(page.getByText(/9-Stage Recruitment Progression Timeline/i)).toBeVisible();
   });
 });

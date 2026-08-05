@@ -14,16 +14,26 @@ import {
   BarChart3,
   ListOrdered,
   LogOut,
+  Briefcase,
+  GitMerge,
+  Globe,
+  Mail,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 const adminNavItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Jobs Console", href: "/admin/jobs", icon: Briefcase },
+  { name: "Recruitment Pipeline", href: "/admin/pipeline", icon: GitMerge },
   { name: "Applications", href: "/admin/applications", icon: FileText },
   { name: "Candidates", href: "/admin/candidates", icon: Users },
   { name: "Documents", href: "/admin/documents", icon: Folder },
   { name: "Payments", href: "/admin/payments", icon: CreditCard },
+  { name: "Website CMS", href: "/admin/cms", icon: Globe },
+  { name: "Contact Inquiries", href: "/admin/contacts", icon: Mail },
+  { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
   { name: "Settings", href: "/admin/settings", icon: Settings },
   { name: "System Logs", href: "/admin/logs", icon: ListOrdered },
   { name: "Admins", href: "/admin/admins", icon: ShieldCheck },
@@ -42,7 +52,7 @@ export function AdminSidebar() {
         </span>
       </div>
 
-      <nav className="mt-6 flex-1 space-y-1.5">
+      <nav className="mt-6 flex-1 space-y-1.5 overflow-y-auto max-h-[calc(100vh-220px)] pr-1">
         {adminNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -51,13 +61,13 @@ export function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
+                "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all",
                 isActive
                   ? "bg-[#167A3D] text-white shadow-md shadow-[#167A3D]/20"
                   : "text-slate-700 hover:bg-[#F8FAF8] hover:text-[#167A3D]"
               )}
             >
-              <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-[#167A3D]")} />
+              <Icon className={cn("h-4 w-4", isActive ? "text-white" : "text-[#167A3D]")} />
               <span>{item.name}</span>
             </Link>
           );
@@ -67,9 +77,9 @@ export function AdminSidebar() {
       <div className="pt-4 border-t border-[#D7E8D8]">
         <Link
           href="/login"
-          className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+          className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
         >
-          <LogOut className="h-5 w-5 text-red-600" />
+          <LogOut className="h-4 w-4 text-red-600" />
           <span>Admin Sign Out</span>
         </Link>
       </div>

@@ -4,3 +4,6 @@ export * from "./documents";
 export * from "./logs";
 export * from "./settings";
 export * from "./notes";
+export * from "./jobs";
+export * from "./pipeline";
+export * from "./cms";

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,26 +8,6 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FileText, Upload, CreditCard, ArrowRight, ShieldCheck, Clock } from "lucide-react";
 
 export default function CandidateDashboardPage() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-slate-200 rounded-lg" />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="h-32 bg-slate-200 rounded-2xl" />
-          <div className="h-32 bg-slate-200 rounded-2xl" />
-          <div className="h-32 bg-slate-200 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       {/* Header Banner */}

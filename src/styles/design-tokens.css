@@ -1,0 +1,12 @@
+:root {
+  --color-primary-navy: #0f172a;
+  --color-primary-blue: #1e3a8a;
+  --color-accent-blue: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-light-bg: #f8fafc;
+  --color-card-bg: #ffffff;
+  --color-slate-text: #0f172a;
+  --color-slate-muted: #64748b;
+  --color-border: #e2e8f0;
+  --radius-card: 1rem;
+}

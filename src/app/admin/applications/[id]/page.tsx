@@ -22,7 +22,7 @@ import {
   Eye,
   Download,
 } from "lucide-react";
-import { ApplicationService } from "@/services/application.service";
+import { getApplicationDetailsAction } from "@/actions/admin.actions";
 import { CandidateStatus, VerificationStatus } from "@/types";
 
 interface DocumentItem {
@@ -84,9 +84,9 @@ export default function AdminApplicationDetailPage() {
 
   const fetchDetails = useCallback(async () => {
     try {
-      const res = await ApplicationService.getApplicationDetails(candidateId);
-      if (res) {
-        setData(res as ApplicationData);
+      const res = await getApplicationDetailsAction(candidateId);
+      if (res.success && res.data) {
+        setData(res.data as ApplicationData);
       } else {
         // Fallback detail object
         setData({

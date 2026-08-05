@@ -3,29 +3,39 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { MetricCard } from "@/components/admin/MetricCard";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Users,
   Clock,
   CheckCircle2,
   XCircle,
   CreditCard,
-  UserPlus,
-  Folder,
+  UserCheck,
+  FileText,
   HardDrive,
-  ArrowRight,
-  ShieldCheck,
+  Trash2,
 } from "lucide-react";
-import { AdminService } from "@/services/admin.service";
-import { runAutoDeleteAction } from "@/actions/admin.actions";
 import { useToast } from "@/hooks/use-toast";
+import { getDashboardMetricsAction, runAutoDeleteAction } from "@/actions/admin.actions";
+
+interface DashboardMetrics {
+  totalCandidates: number;
+  pendingApplications: number;
+  approvedApplications: number;
+  rejectedApplications: number;
+  pendingPayments: number;
+  todayRegistrations: number;
+  documentsUploaded: number;
+  storageUsedBytes: number;
+}
 
 export default function AdminDashboardPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalCandidates: 0,
     pendingApplications: 0,
     approvedApplications: 0,
@@ -39,20 +49,12 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadMetrics() {
       try {
-        const data = await AdminService.getDashboardMetrics();
-        setMetrics(data);
+        const res = await getDashboardMetricsAction();
+        if (res.success && res.data) {
+          setMetrics(res.data as DashboardMetrics);
+        }
       } catch {
-        // Fallback demo metrics if DB offline
-        setMetrics({
-          totalCandidates: 124,
-          pendingApplications: 18,
-          approvedApplications: 92,
-          rejectedApplications: 14,
-          pendingPayments: 7,
-          todayRegistrations: 5,
-          documentsUploaded: 310,
-          storageUsedBytes: 480 * 1024 * 1024,
-        });
+        // Fallback
       } finally {
         setLoading(false);
       }
@@ -65,201 +67,117 @@ export default function AdminDashboardPage() {
     try {
       const res = await runAutoDeleteAction();
       if (res.success) {
-        toast({ title: "Auto-Delete Engine", description: res.message, variant: "success" });
+        toast({ title: "Auto-Delete Complete", description: res.message, variant: "success" });
       } else {
-        toast({ title: "Error", description: res.error, variant: "destructive" });
+        toast({ title: "Auto-Delete Failed", description: res.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Error", description: "Auto-delete check failed.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to run auto-delete system check.", variant: "destructive" });
     } finally {
       setPurging(false);
     }
   };
 
-  const formatStorage = (bytes: number) => {
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-slate-200 rounded-lg" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-28 bg-slate-200 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const storageMb = (metrics.storageUsedBytes / (1024 * 1024)).toFixed(2);
 
   return (
-    <div className="space-y-8">
-      {/* Header Banner */}
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <PageHeader
           title="Admin Control Center"
-          subtitle="Real-time recruitment metrics, application queues, and storage analytics for Ghazi Overseas Employment."
+          subtitle="Real-time candidate statistics, application review queues, R2 document storage, and system monitoring."
         />
-
         <Button
           onClick={handleRunAutoDelete}
           disabled={purging}
           variant="outline"
-          className="border-red-200 text-red-700 hover:bg-red-50 font-bold gap-2 shrink-0 rounded-xl"
+          className="border-red-200 text-red-700 hover:bg-red-50 font-bold gap-2 self-start md:self-auto rounded-xl"
         >
-          <ShieldCheck className="h-4 w-4 text-red-600" />
-          {purging ? "Purging Expired Files..." : "Run Auto-Delete Check (30 Days)"}
+          <Trash2 className="h-4 w-4" />
+          {purging ? "Purging Unapproved Applications..." : "Run 30-Day Auto-Delete Check"}
         </Button>
       </div>
 
-      {/* 8 Summary Dashboard Metric Cards */}
+      {/* 8 Summary Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Total Candidates */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Candidates
-            </CardTitle>
-            <Users className="h-5 w-5 text-[#167A3D]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900">{metrics.totalCandidates}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Master applicant database</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Pending Applications */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Pending Applications
-            </CardTitle>
-            <Clock className="h-5 w-5 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-amber-700">{metrics.pendingApplications}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Awaiting admin decision</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Approved Applications */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Approved Applications
-            </CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-emerald-700">{metrics.approvedApplications}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Shortlisted for employers</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Rejected Applications */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Rejected Applications
-            </CardTitle>
-            <XCircle className="h-5 w-5 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-red-700">{metrics.rejectedApplications}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Ineligible files</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 5: Pending Payments */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Pending Payments
-            </CardTitle>
-            <CreditCard className="h-5 w-5 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-blue-700">{metrics.pendingPayments}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Payment proof submitted</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 6: Today's Registrations */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Today&apos;s Registrations
-            </CardTitle>
-            <UserPlus className="h-5 w-5 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-purple-700">{metrics.todayRegistrations}</div>
-            <p className="text-[10px] text-slate-500 mt-1">New candidates registered today</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 7: Documents Uploaded */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Documents Uploaded
-            </CardTitle>
-            <Folder className="h-5 w-5 text-[#167A3D]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-slate-900">{metrics.documentsUploaded}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Verified files in vault</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 8: Storage Used */}
-        <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              R2 Storage Used
-            </CardTitle>
-            <HardDrive className="h-5 w-5 text-[#167A3D]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-[#167A3D]">{formatStorage(metrics.storageUsedBytes)}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Cloudflare R2 storage</p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total Candidates"
+          value={loading ? "..." : metrics.totalCandidates}
+          description="Registered candidate profiles"
+          icon={<Users className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Pending Applications"
+          value={loading ? "..." : metrics.pendingApplications}
+          description="Awaiting admin decision"
+          icon={<Clock className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Approved Applications"
+          value={loading ? "..." : metrics.approvedApplications}
+          description="Verified overseas deployment"
+          icon={<CheckCircle2 className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Rejected Applications"
+          value={loading ? "..." : metrics.rejectedApplications}
+          description="Ineligible application files"
+          icon={<XCircle className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Pending Payments"
+          value={loading ? "..." : metrics.pendingPayments}
+          description="Submitted verification proof"
+          icon={<CreditCard className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Today's Registrations"
+          value={loading ? "..." : metrics.todayRegistrations}
+          description="New candidate signups today"
+          icon={<UserCheck className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="Documents Uploaded"
+          value={loading ? "..." : metrics.documentsUploaded}
+          description="Cloudflare R2 vault objects"
+          icon={<FileText className="h-5 w-5" />}
+        />
+        <MetricCard
+          title="R2 Storage Used"
+          value={loading ? "..." : `${storageMb} MB`}
+          description="Cloudflare R2 bucket usage"
+          icon={<HardDrive className="h-5 w-5" />}
+        />
       </div>
 
-      {/* Quick Navigation Quick Queue */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Link href="/admin/applications" className="block">
-          <Card className="p-6 border-[#D7E8D8] hover:border-[#167A3D] transition-all bg-white hover:bg-emerald-50/50 group">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-900">Application Management Queue</h3>
-                <p className="text-xs text-slate-500">
-                  Search, filter, approve, reject, or return applications for correction.
-                </p>
-              </div>
-              <ArrowRight className="h-6 w-6 text-[#167A3D] group-hover:translate-x-1 transition-transform" />
+      {/* Quick Action Navigation Grid */}
+      <Card className="border-[#D7E8D8] bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-slate-900 text-base font-bold">Quick Administrative Workflows</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <Link href="/admin/applications">
+            <div className="rounded-xl border border-[#D7E8D8] bg-[#F8FAF8] p-4 hover:border-[#167A3D] transition-colors cursor-pointer space-y-1">
+              <h4 className="font-bold text-slate-900 text-sm">Review Applications Directory</h4>
+              <p className="text-xs text-slate-500">Search and filter candidates by CNIC, passport, or profession.</p>
             </div>
-          </Card>
-        </Link>
+          </Link>
 
-        <Link href="/admin/payments" className="block">
-          <Card className="p-6 border-[#D7E8D8] hover:border-[#167A3D] transition-all bg-white hover:bg-emerald-50/50 group">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-900">Payment Verification Queue</h3>
-                <p className="text-xs text-slate-500">
-                  Review transaction IDs and approve fee submissions.
-                </p>
-              </div>
-              <ArrowRight className="h-6 w-6 text-[#167A3D] group-hover:translate-x-1 transition-transform" />
+          <Link href="/admin/payments">
+            <div className="rounded-xl border border-[#D7E8D8] bg-[#F8FAF8] p-4 hover:border-[#167A3D] transition-colors cursor-pointer space-y-1">
+              <h4 className="font-bold text-slate-900 text-sm">Verify Submitted Payments</h4>
+              <p className="text-xs text-slate-500">Approve transaction reference IDs (TID) and auto-approve candidates.</p>
             </div>
-          </Card>
-        </Link>
-      </div>
+          </Link>
+
+          <Link href="/admin/settings">
+            <div className="rounded-xl border border-[#D7E8D8] bg-[#F8FAF8] p-4 hover:border-[#167A3D] transition-colors cursor-pointer space-y-1">
+              <h4 className="font-bold text-slate-900 text-sm">Admin Portal & Fee Settings</h4>
+              <p className="text-xs text-slate-500">Toggle payment methods, submission fee rules, and auto-delete limits.</p>
+            </div>
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 }

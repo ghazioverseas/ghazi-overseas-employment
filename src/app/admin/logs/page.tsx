@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { AdminService } from "@/services/admin.service";
+import { getAllSystemLogsAction } from "@/actions/admin.actions";
 
 interface LogRow {
   id: string;
@@ -28,20 +28,14 @@ export default function AdminLogsPage() {
   useEffect(() => {
     async function loadLogs() {
       try {
-        const data = await AdminService.getAllSystemLogs();
-        setLogs(data as LogRow[]);
+        const res = await getAllSystemLogsAction();
+        if (res.success && res.data) {
+          setLogs(res.data as LogRow[]);
+        } else {
+          setLogs([]);
+        }
       } catch {
-        setLogs([
-          {
-            id: "log_1",
-            action: "APPLICATION_APPROVED",
-            message: "APPLICATION_APPROVED: Candidate cand_1",
-            userId: "admin_super_user",
-            userRole: "admin",
-            details: JSON.stringify({ candidateId: "cand_1", action: "approve" }),
-            createdAt: new Date().toISOString(),
-          },
-        ]);
+        setLogs([]);
       } finally {
         setLoading(false);
       }

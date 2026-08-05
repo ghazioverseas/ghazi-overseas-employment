@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Search, Eye } from "lucide-react";
-import { AdminService } from "@/services/admin.service";
+import { getAllCandidatesAction } from "@/actions/admin.actions";
 import { CandidateStatus } from "@/types";
 
 interface CandidateRow {
@@ -30,8 +30,12 @@ export default function AdminCandidatesPage() {
   useEffect(() => {
     async function loadCandidates() {
       try {
-        const data = await AdminService.getAllCandidates();
-        setCandidates(data as CandidateRow[]);
+        const res = await getAllCandidatesAction();
+        if (res.success && res.data) {
+          setCandidates(res.data as CandidateRow[]);
+        } else {
+          setCandidates([]);
+        }
       } catch {
         setCandidates([]);
       } finally {

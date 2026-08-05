@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { PaymentVerificationService } from "@/services/payment.service";
-import { verifyPaymentAction } from "@/actions/admin.actions";
+import { getPendingPaymentsAction, verifyPaymentAction } from "@/actions/admin.actions";
 import { VerificationStatus } from "@/types";
 
 interface PaymentRow {
@@ -28,21 +27,14 @@ export default function AdminPaymentsPage() {
 
   const loadQueue = async () => {
     try {
-      const data = await PaymentVerificationService.getPendingPayments();
-      setPayments(data as PaymentRow[]);
+      const res = await getPendingPaymentsAction();
+      if (res.success && res.data) {
+        setPayments(res.data as PaymentRow[]);
+      } else {
+        setPayments([]);
+      }
     } catch {
-      // Fallback queue
-      setPayments([
-        {
-          id: "cand_1",
-          fullName: "Muhammad Ali",
-          cnic: "42101-1234567-1",
-          transactionRef: "TRX-99882211",
-          submissionFee: 500,
-          paymentStatus: "payment_under_review",
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
+      setPayments([]);
     } finally {
       setLoading(false);
     }

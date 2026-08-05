@@ -124,13 +124,22 @@ export default function LoginPage() {
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col items-center justify-center border-t border-[#D7E8D8] pt-4 text-xs text-slate-600">
+        <CardFooter className="flex flex-col items-center justify-center border-t border-[#D7E8D8] pt-4 gap-2 text-xs text-slate-600">
           <span>
             Don&apos;t have a candidate profile?{" "}
             <Link href="/register" className="font-bold text-[#167A3D] hover:underline">
               Apply Now
             </Link>
           </span>
+
+          <div className="pt-2 border-t border-[#D7E8D8] w-full text-center">
+            <span className="text-slate-500">
+              Are you an Administrator?{" "}
+              <Link href="/admin/login" className="font-bold text-[#167A3D] hover:underline">
+                Admin Login
+              </Link>
+            </span>
+          </div>
         </CardFooter>
       </Card>
     </div>

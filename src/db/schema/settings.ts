@@ -1,16 +1,27 @@
-import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 
 export const adminSettings = pgTable("admin_settings", {
   id: text("id").primaryKey(),
+  companyName: text("company_name").default("Ghazi Overseas Employment Pakistan").notNull(),
+  companyWebsite: text("company_website").default("https://ghazioverseas.pk").notNull(),
+  companyAddress: text("company_address").default("Karachi / Islamabad Commercial Zone, Pakistan").notNull(),
+  companyPhone: text("company_phone").default("+92 (021) 111-GHAZI-0").notNull(),
+  companyEmail: text("company_email").default("info@ghazioverseas.pk").notNull(),
+  submissionFee: integer("submission_fee").default(500).notNull(),
+  isSubmissionFeeEnabled: boolean("is_submission_fee_enabled").default(true).notNull(),
   bankName: text("bank_name").default("Meezan Bank Limited").notNull(),
   accountTitle: text("account_title").default("Ghazi Overseas Employment Pakistan").notNull(),
   accountNumber: text("account_number").default("0102030405060708").notNull(),
   iban: text("iban").default("PK36MEZN0001020304050607").notNull(),
+  showBank: boolean("show_bank").default(true).notNull(),
   easypaisaNumber: text("easypaisa_number").default("03001234567").notNull(),
   easypaisaTitle: text("easypaisa_title").default("Ghazi Overseas Employment").notNull(),
+  showEasypaisa: boolean("show_easypaisa").default(true).notNull(),
   jazzcashNumber: text("jazzcash_number").default("03011234567").notNull(),
   jazzcashTitle: text("jazzcash_title").default("Ghazi Overseas Employment").notNull(),
-  submissionFee: integer("submission_fee").default(500).notNull(),
+  showJazzcash: boolean("show_jazzcash").default(true).notNull(),
+  autoDeleteDays: integer("auto_delete_days").default(30).notNull(),
+  maxUploadSizeMb: integer("max_upload_size_mb").default(10).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

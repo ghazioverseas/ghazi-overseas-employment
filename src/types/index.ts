@@ -5,8 +5,10 @@ export type CandidateStatus =
   | "profile_incomplete"
   | "documents_pending"
   | "under_review"
+  | "awaiting_payment_verification"
   | "verified"
   | "shortlisted"
+  | "approved"
   | "rejected";
 
 export type DocumentType =
@@ -19,7 +21,13 @@ export type DocumentType =
   | "degree_diploma"
   | "photo";
 
-export type VerificationStatus = "pending" | "verified" | "rejected";
+export type VerificationStatus =
+  | "pending"
+  | "verified"
+  | "rejected"
+  | "pending_payment"
+  | "payment_under_review"
+  | "approved";
 
 export interface User {
   id: string;

@@ -1,14 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Candidate Portal Pages E2E Tests", () => {
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ context }) => {
     // Set authenticated session cookie to bypass middleware redirect
     await context.addCookies([
       {
         name: "better-auth.session_token",
         value: "test_verified_session_token",
-        domain: "localhost",
-        path: "/",
+        url: "http://localhost:3000",
       },
     ]);
   });

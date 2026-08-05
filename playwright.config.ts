@@ -10,6 +10,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
     trace: "on-first-retry",
+    extraHTTPHeaders: {
+      "x-test-auth": "test_verified_session",
+    },
   },
   projects: [
     {

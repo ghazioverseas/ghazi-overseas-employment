@@ -2,72 +2,69 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Building2, Menu, X, ShieldCheck, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-40 w-full border-b border-[#D7E8D8] bg-[#F8FAF8]/95 backdrop-blur">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Logo & License */}
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-900 text-white shadow-md shadow-blue-900/20">
-            <Building2 className="h-6 w-6 text-blue-400" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-slate-900">
-              Ghazi Overseas Employment
-            </span>
-            <span className="flex items-center gap-1 text-xs font-semibold text-blue-700">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> License # OPEP-1234
-            </span>
-          </div>
-        </Link>
+        {/* Brand Logo with Licensing */}
+        <div className="flex items-center gap-4">
+          <GhaziLogo size="md" />
+        </div>
 
-        {/* Desktop Links & Actions */}
-        <div className="hidden items-center gap-4 md:flex">
+        {/* Desktop Navigation */}
+        <div className="hidden items-center gap-6 md:flex">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#167A3D] bg-[#167A3D]/10 px-3 py-1.5 rounded-full border border-[#D7E8D8]">
+            <ShieldCheck className="h-4 w-4 text-[#167A3D]" />
+            <span>Government Verification Portal</span>
+          </div>
+
           <Link
             href="/login"
-            className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+            className="text-sm font-semibold text-slate-700 transition-colors hover:text-[#167A3D]"
           >
-            Candidate Sign In
+            Candidate Login
           </Link>
+          
           <Link href="/register">
-            <Button size="lg" className="gap-2 bg-blue-700 hover:bg-blue-800">
+            <Button size="lg" className="gap-2 bg-[#167A3D] hover:bg-[#0E5D2E] text-white font-bold rounded-xl shadow-md">
               Apply Now <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
 
-        {/* Mobile menu trigger */}
+        {/* Mobile menu button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 md:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7E8D8] bg-white text-slate-800 hover:bg-slate-50 md:hidden"
           aria-label="Toggle Navigation Menu"
         >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="border-b border-slate-200 bg-white p-4 shadow-lg md:hidden animate-in slide-in-from-top-2">
+        <div className="border-b border-[#D7E8D8] bg-white p-4 shadow-lg md:hidden animate-in slide-in-from-top-2">
           <div className="flex flex-col gap-3">
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="flex h-11 items-center rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Candidate Sign In
+              Candidate Login
             </Link>
             <Link
               href="/register"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full"
             >
-              <Button className="w-full justify-center bg-blue-700 py-3 text-sm hover:bg-blue-800">
+              <Button className="w-full justify-center bg-[#167A3D] hover:bg-[#0E5D2E] text-white font-bold py-3">
                 Apply Now
               </Button>
             </Link>

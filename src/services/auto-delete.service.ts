@@ -1,11 +1,11 @@
 import { db } from "@/lib/db";
 import { candidates } from "@/db/schema/candidates";
 import { documents } from "@/db/schema/documents";
-import { systemLogs } from "@/db/schema/logs";
 import { adminSettings } from "@/db/schema/settings";
 import { deleteFileFromR2 } from "@/lib/storage/r2";
 import { eq, lt, and, ne } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { LogService } from "@/services/log.service";
 
 export class AutoDeleteService {
   static async runAutoDeleteCheck(adminUserId: string = "system_cron") {
@@ -52,20 +52,19 @@ export class AutoDeleteService {
 
         deletedCount++;
 
-        // Log deletion matching systemLogs schema
-        await db.insert(systemLogs).values({
-          id: crypto.randomUUID(),
-          level: "info",
-          category: "server",
-          message: `AUTO_DELETE_EXPIRED_CANDIDATE: Purged candidate ${candidate.fullName}`,
-          metadata: {
+        // Log deletion matching systemLogs schema safely
+        await LogService.recordLog(
+          "info",
+          "server",
+          `AUTO_DELETE_EXPIRED_CANDIDATE: Purged candidate ${candidate.fullName}`,
+          {
             candidateId: candidate.id,
             fullName: candidate.fullName,
             cnic: candidate.cnic,
             autoDeleteDays,
           },
-          userId: adminUserId === "system_cron" ? null : adminUserId,
-        });
+          adminUserId === "system_cron" ? undefined : adminUserId
+        );
       }
 
       logger.info("server", `Auto-delete engine executed. Purged ${deletedCount} unapproved candidate files.`, {

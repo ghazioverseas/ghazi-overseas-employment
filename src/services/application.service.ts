@@ -2,9 +2,9 @@ import { db } from "@/lib/db";
 import { candidates } from "@/db/schema/candidates";
 import { documents } from "@/db/schema/documents";
 import { applicationNotes } from "@/db/schema/notes";
-import { systemLogs } from "@/db/schema/logs";
 import { eq, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { LogService } from "@/services/log.service";
 import { CandidateStatus, VerificationStatus } from "@/types";
 
 export class ApplicationService {
@@ -99,15 +99,14 @@ export class ApplicationService {
         });
       }
 
-      // Create System Log
-      await db.insert(systemLogs).values({
-        id: crypto.randomUUID(),
-        level: "info",
-        category: "server",
-        message: `${logActionName}: Candidate ${data.candidateId}`,
-        metadata: { candidateId: data.candidateId, action: data.action, reason: data.reason },
-        userId: data.adminUserId,
-      });
+      // Create System Log safely via LogService
+      await LogService.recordLog(
+        "info",
+        "server",
+        `${logActionName}: Candidate ${data.candidateId}`,
+        { candidateId: data.candidateId, action: data.action, reason: data.reason },
+        data.adminUserId
+      );
 
       logger.info("server", `Admin executed application action: ${data.action}`, {
         candidateId: data.candidateId,

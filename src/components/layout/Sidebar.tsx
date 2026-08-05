@@ -10,6 +10,7 @@ import {
   CreditCard,
   User,
   Activity,
+  Briefcase,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 const navItems = [
   { name: "Dashboard", href: "/candidate/dashboard", icon: LayoutDashboard },
+  { name: "Available Jobs", href: "/candidate/jobs", icon: Briefcase },
   { name: "My Application", href: "/candidate/application", icon: FileText },
   { name: "Upload Documents", href: "/candidate/documents", icon: Upload },
   { name: "Payment", href: "/candidate/payment", icon: CreditCard },

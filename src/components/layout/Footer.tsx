@@ -2,15 +2,18 @@ import React from "react";
 import Link from "next/link";
 import { ShieldCheck, Mail, Phone, MapPin } from "lucide-react";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
+import { SettingsService } from "@/services/settings.service";
 
-export function Footer() {
+export async function Footer() {
+  const settings = await SettingsService.getPaymentSettings();
+
   return (
     <footer className="mt-auto border-t border-[#D7E8D8] bg-[#0E5D2E] text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {/* Brand & License Info */}
           <div className="flex flex-col gap-3">
-            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur inline-block w-fit">
+            <div className="bg-white p-3 rounded-2xl shadow-md inline-block w-fit">
               <GhaziLogo size="md" showLink={false} />
             </div>
             <p className="text-sm text-emerald-100 leading-relaxed mt-2">
@@ -29,15 +32,19 @@ export function Footer() {
             <ul className="flex flex-col gap-2.5 text-sm text-emerald-100">
               <li className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-emerald-300 shrink-0" />
-                <span>Karachi / Islamabad Commercial Zone, Pakistan</span>
+                <span>{settings.companyAddress}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-emerald-300 shrink-0" />
-                <span>+92 (021) 111-GHAZI-0</span>
+                <a href={`tel:${settings.companyPhone}`} className="hover:text-white transition-colors">
+                  {settings.companyPhone}
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-emerald-300 shrink-0" />
-                <span>info@ghazioverseas.pk</span>
+                <a href={`mailto:${settings.companyEmail}`} className="hover:text-white transition-colors">
+                  {settings.companyEmail}
+                </a>
               </li>
             </ul>
           </div>

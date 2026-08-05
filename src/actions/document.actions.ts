@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { documentUploadSchema } from "@/validators/document.schema";
-import { getPresignedUploadUrl } from "@/lib/storage/r2";
+import { getPresignedUploadUrl, getPresignedDownloadUrl } from "@/lib/storage/r2";
 import { DocumentService } from "@/services/document.service";
 import { logger } from "@/lib/logger";
 
@@ -28,6 +29,8 @@ export async function requestDocumentUploadUrlAction(formData: unknown) {
       fileSize: validated.fileSize,
     });
 
+    revalidatePath("/candidate/documents");
+
     logger.info("upload", "Generated presigned upload URL for Cloudflare R2", {
       documentId,
       candidateId: validated.candidateId,
@@ -45,6 +48,31 @@ export async function requestDocumentUploadUrlAction(formData: unknown) {
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to process document upload request.";
     logger.error("upload", "Failed to generate document upload URL", { error: errMessage });
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function getCandidateDocumentsAction(candidateId: string = "cand_default_1") {
+  try {
+    const docs = await DocumentService.getDocumentsByCandidateId(candidateId);
+    return { success: true, data: docs };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to fetch candidate documents.";
+    logger.error("database", "getCandidateDocumentsAction error", { candidateId, error: errMessage });
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function getPresignedDownloadUrlAction(storageKey: string) {
+  try {
+    if (!storageKey) {
+      return { success: false, error: "Storage key is required." };
+    }
+    const url = await getPresignedDownloadUrl(storageKey);
+    return { success: true, url };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to generate download URL.";
+    logger.error("upload", "getPresignedDownloadUrlAction error", { storageKey, error: errMessage });
     return { success: false, error: errMessage };
   }
 }

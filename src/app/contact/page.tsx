@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Phone, Mail, MapPin, Send, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitContactFormAction } from "@/actions/cms.actions";
+import { getAdminSettingsAction } from "@/actions/settings.actions";
 
 export default function PublicContactPage() {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState({
+    address: "Karachi / Islamabad Commercial Zone, Pakistan",
+    phone: "+92 (021) 111-GHAZI-0",
+    email: "info@ghazioverseas.pk",
+  });
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,6 +26,25 @@ export default function PublicContactPage() {
     subject: "",
     message: "",
   });
+
+  useEffect(() => {
+    async function loadInfo() {
+      try {
+        const res = await getAdminSettingsAction();
+        if (res.success && res.data) {
+          const s = res.data as Record<string, unknown>;
+          setCompanyInfo({
+            address: typeof s.companyAddress === "string" ? s.companyAddress : "Karachi / Islamabad Commercial Zone, Pakistan",
+            phone: typeof s.companyPhone === "string" ? s.companyPhone : "+92 (021) 111-GHAZI-0",
+            email: typeof s.companyEmail === "string" ? s.companyEmail : "info@ghazioverseas.pk",
+          });
+        }
+      } catch {
+        // Fallback to defaults
+      }
+    }
+    loadInfo();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +165,7 @@ export default function PublicContactPage() {
                 <MapPin className="h-5 w-5 text-[#167A3D] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-slate-900">Head Office Location</p>
-                  <p className="text-slate-500">Commercial Zone, Karachi / Islamabad, Pakistan</p>
+                  <p className="text-slate-500">{companyInfo.address}</p>
                 </div>
               </div>
 
@@ -148,7 +173,9 @@ export default function PublicContactPage() {
                 <Phone className="h-5 w-5 text-[#167A3D] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-slate-900">Official Helpline</p>
-                  <p className="text-slate-500">+92 (021) 111-GHAZI-0</p>
+                  <a href={`tel:${companyInfo.phone}`} className="text-slate-500 hover:text-[#167A3D] transition-colors">
+                    {companyInfo.phone}
+                  </a>
                 </div>
               </div>
 
@@ -156,7 +183,9 @@ export default function PublicContactPage() {
                 <Mail className="h-5 w-5 text-[#167A3D] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold text-slate-900">Email Contact</p>
-                  <p className="text-slate-500">info@ghazioverseas.pk</p>
+                  <a href={`mailto:${companyInfo.email}`} className="text-slate-500 hover:text-[#167A3D] transition-colors">
+                    {companyInfo.email}
+                  </a>
                 </div>
               </div>
             </div>

@@ -67,13 +67,14 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="candidate@example.com"
+                autoComplete="username"
+                placeholder="your.email@example.com"
                 {...register("email")}
               />
               {errors.email && (
@@ -94,6 +95,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 {...register("password")}
               />

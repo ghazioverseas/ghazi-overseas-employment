@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Copy, Eye, EyeOff, Search } from "lucide-react";
+import { Plus, Trash2, Copy, Eye, EyeOff, Search, Users, UserX, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   getPublicJobsAction,
@@ -17,6 +17,8 @@ import {
   updateJobAction,
   deleteJobAction,
   duplicateJobAction,
+  getJobApplicantsAction,
+  removeJobApplicationAction,
 } from "@/actions/job.actions";
 
 interface JobRow {
@@ -34,6 +36,18 @@ interface JobRow {
   createdAt: Date | string;
 }
 
+interface ApplicantRow {
+  applicationId: string;
+  candidateId: string;
+  stage: string;
+  appliedAt: string | Date;
+  fullName: string;
+  cnic: string;
+  phone: string;
+  profession?: string;
+  city?: string;
+}
+
 export default function AdminJobsPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -41,6 +55,12 @@ export default function AdminJobsPage() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Job Applicants Modal state
+  const [applicantsModalOpen, setApplicantsModalOpen] = useState(false);
+  const [activeJobTitle, setActiveJobTitle] = useState<string>("");
+  const [applicantsLoading, setApplicantsLoading] = useState(false);
+  const [applicants, setApplicants] = useState<ApplicantRow[]>([]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -147,6 +167,42 @@ export default function AdminJobsPage() {
     }
   };
 
+  const handleViewApplicants = async (jobId: string, jobTitle: string) => {
+    setActiveJobTitle(jobTitle);
+    setApplicantsModalOpen(true);
+    setApplicantsLoading(true);
+    try {
+      const res = await getJobApplicantsAction(jobId);
+      if (res.success && res.data) {
+        setApplicants(res.data as ApplicantRow[]);
+      } else {
+        setApplicants([]);
+      }
+    } catch {
+      setApplicants([]);
+    } finally {
+      setApplicantsLoading(false);
+    }
+  };
+
+  const handleRemoveApplicant = async (applicationId: string, candidateName: string) => {
+    try {
+      const res = await removeJobApplicationAction(applicationId);
+      if (res.success) {
+        toast({
+          title: "Application Removed",
+          description: `${candidateName}'s application for "${activeJobTitle}" was removed without altering candidate's profile.`,
+          variant: "success",
+        });
+        setApplicants((prev) => prev.filter((a) => a.applicationId !== applicationId));
+      } else {
+        toast({ title: "Removal Failed", description: res.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to remove job application.", variant: "destructive" });
+    }
+  };
+
   const filtered = jobs.filter(
     (j) =>
       !search ||
@@ -161,7 +217,7 @@ export default function AdminJobsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <PageHeader
           title="Job Management Console"
-          subtitle="Create, edit, duplicate, archive, and publish overseas job vacancies."
+          subtitle="Create, edit, duplicate, archive, publish overseas job vacancies, and manage job applicants."
         />
         <Button
           onClick={() => setCreateModalOpen(true)}
@@ -233,6 +289,14 @@ export default function AdminJobsPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="h-7 text-xs gap-1 border-[#D7E8D8] text-[#167A3D] hover:bg-emerald-50"
+                          onClick={() => handleViewApplicants(j.id, j.title)}
+                        >
+                          <Users className="h-3 w-3" /> View Applicants
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="h-7 text-xs gap-1 border-[#D7E8D8]"
                           onClick={() => handleTogglePublish(j.id, j.status)}
                         >
@@ -265,6 +329,82 @@ export default function AdminJobsPage() {
         </div>
       </Card>
 
+      {/* View Applicants Modal */}
+      <Dialog open={applicantsModalOpen} onClose={() => setApplicantsModalOpen(false)}>
+        <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="flex items-center justify-between border-b border-[#D7E8D8] pb-3">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#167A3D]" /> Applicants for &quot;{activeJobTitle}&quot;
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review candidates who applied for this specific vacancy. Removing an application will not alter the candidate&apos;s general profile.
+              </p>
+            </div>
+            <Badge variant="outline" className="bg-[#F8FAF8] border-[#D7E8D8] text-[#167A3D] font-extrabold px-3 py-1 text-xs">
+              {applicants.length} Total Applicants
+            </Badge>
+          </div>
+
+          <div className="min-h-[250px] max-h-[450px] overflow-y-auto">
+            {applicantsLoading ? (
+              <div className="p-12 text-center text-sm font-semibold text-slate-500">
+                Loading job applicants...
+              </div>
+            ) : applicants.length === 0 ? (
+              <div className="p-12 text-center text-sm font-semibold text-slate-500 border border-dashed border-[#D7E8D8] rounded-xl bg-[#F8FAF8]">
+                <User className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                No candidates have applied for this job position yet.
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#F8FAF8] text-slate-700 font-bold border-b border-[#D7E8D8]">
+                  <tr>
+                    <th className="p-3">Candidate Name</th>
+                    <th className="p-3">CNIC & Phone</th>
+                    <th className="p-3">Profession</th>
+                    <th className="p-3">Pipeline Stage</th>
+                    <th className="p-3 text-right">Job Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#D7E8D8]">
+                  {applicants.map((a) => (
+                    <tr key={a.applicationId} className="hover:bg-[#F8FAF8]">
+                      <td className="p-3 font-extrabold text-slate-900">{a.fullName}</td>
+                      <td className="p-3">
+                        <div className="font-bold text-slate-800">{a.cnic}</div>
+                        <div className="text-[10px] text-slate-500">{a.phone}</div>
+                      </td>
+                      <td className="p-3 font-semibold text-[#167A3D]">{a.profession || "Candidate"}</td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="bg-emerald-50 text-[#167A3D] border-[#D7E8D8] capitalize text-[10px]">
+                          {a.stage?.replace("_", " ") || "applied"}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs text-red-600 hover:bg-red-50 border-red-200 gap-1"
+                          onClick={() => handleRemoveApplicant(a.applicationId, a.fullName)}
+                        >
+                          <UserX className="h-3 w-3" /> Reject for this Job
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <Button onClick={() => setApplicantsModalOpen(false)} className="w-full bg-[#167A3D] text-white">
+            Close Applicants List
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Create Job Modal */}
       <Dialog open={createModalOpen} onClose={() => setCreateModalOpen(false)}>
         <form onSubmit={handleCreateJob} className="space-y-4 max-h-[85vh] overflow-y-auto pr-2">
           <h3 className="text-lg font-bold text-slate-900 border-b border-[#D7E8D8] pb-2">

@@ -1,11 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { JobService, JobInput } from "@/services/job.service";
 import { PipelineService } from "@/services/pipeline.service";
 
 export async function createJobAction(input: JobInput) {
   try {
     const job = await JobService.createJob(input);
+    revalidatePath("/jobs");
+    revalidatePath("/admin/jobs");
     return { success: true, data: job };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to create job.";
@@ -16,6 +19,8 @@ export async function createJobAction(input: JobInput) {
 export async function updateJobAction(id: string, input: Partial<JobInput>) {
   try {
     const updated = await JobService.updateJob(id, input);
+    revalidatePath("/jobs");
+    revalidatePath("/admin/jobs");
     return { success: true, data: updated };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to update job.";
@@ -26,6 +31,8 @@ export async function updateJobAction(id: string, input: Partial<JobInput>) {
 export async function deleteJobAction(id: string) {
   try {
     await JobService.deleteJob(id);
+    revalidatePath("/jobs");
+    revalidatePath("/admin/jobs");
     return { success: true, message: "Job deleted successfully." };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to delete job.";
@@ -36,6 +43,8 @@ export async function deleteJobAction(id: string) {
 export async function duplicateJobAction(id: string) {
   try {
     const duplicated = await JobService.duplicateJob(id);
+    revalidatePath("/jobs");
+    revalidatePath("/admin/jobs");
     return { success: true, data: duplicated };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to duplicate job.";
@@ -72,9 +81,32 @@ export async function getJobDetailsAction(slug: string) {
 export async function applyToJobAction(candidateId: string, jobId: string) {
   try {
     const application = await PipelineService.applyToJob(candidateId, jobId);
+    revalidatePath("/candidate/jobs");
+    revalidatePath("/admin/jobs");
     return { success: true, data: application, message: "Application submitted successfully to Ghazi Overseas." };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to submit job application.";
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function getJobApplicantsAction(jobId: string) {
+  try {
+    const applicants = await PipelineService.getJobApplicants(jobId);
+    return { success: true, data: applicants };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to fetch job applicants.";
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function removeJobApplicationAction(applicationId: string) {
+  try {
+    await PipelineService.removeJobApplication(applicationId);
+    revalidatePath("/admin/jobs");
+    return { success: true, message: "Candidate application removed from this specific job." };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to remove job application.";
     return { success: false, error: errMessage };
   }
 }

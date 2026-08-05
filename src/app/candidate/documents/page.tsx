@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
-import { Upload, FileText, CheckCircle2, Eye, RefreshCw, AlertCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle2, Eye, Download, RefreshCw, AlertCircle, Send, FileCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { requestDocumentUploadUrlAction } from "@/actions/document.actions";
+import {
+  requestDocumentUploadUrlAction,
+  getCandidateDocumentsAction,
+  getPresignedDownloadUrlAction,
+} from "@/actions/document.actions";
 import { getAdminSettingsAction } from "@/actions/settings.actions";
 import { DocumentType } from "@/types";
 
@@ -21,27 +25,28 @@ interface DocumentSlot {
   status?: "pending" | "verified" | "rejected";
 }
 
+interface FetchedDoc {
+  id: string;
+  candidateId: string;
+  documentType: string;
+  originalFileName: string;
+  storageKey: string;
+  mimeType: string;
+  fileSize: number;
+  verificationStatus: string;
+}
+
 export default function CandidateDocumentsPage() {
   const { toast } = useToast();
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("");
+  const [previewMime, setPreviewMime] = useState<string>("application/pdf");
+  const [previewKey, setPreviewKey] = useState<string>("");
   const [maxUploadMb, setMaxUploadMb] = useState(10);
-
-  useEffect(() => {
-    async function loadUploadLimit() {
-      try {
-        const res = await getAdminSettingsAction();
-        if (res.success && res.data) {
-          setMaxUploadMb((res.data as { maxUploadSizeMb?: number }).maxUploadSizeMb || 10);
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadUploadLimit();
-  }, []);
+  const [submittingAll, setSubmittingAll] = useState(false);
+  const [isFinalSubmitted, setIsFinalSubmitted] = useState(false);
 
   const [documents, setDocuments] = useState<DocumentSlot[]>([
     { type: "passport", label: "Original Passport Copy (Page 1 & 2)", required: true },
@@ -51,6 +56,46 @@ export default function CandidateDocumentsPage() {
     { type: "experience_certificate", label: "Trade / Experience Certificates", required: false },
     { type: "degree_diploma", label: "Educational Degree / DAE Diploma", required: false },
   ]);
+
+  const loadDocuments = useCallback(async () => {
+    try {
+      const res = await getCandidateDocumentsAction("cand_default_1");
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const fetchedDocs = res.data as FetchedDoc[];
+        setDocuments((prev) =>
+          prev.map((slot) => {
+            const match = fetchedDocs.find((d) => d.documentType === slot.type);
+            if (match) {
+              return {
+                ...slot,
+                uploadedKey: match.storageKey,
+                originalName: match.originalFileName,
+                status: (match.verificationStatus as "pending" | "verified" | "rejected") || "pending",
+              };
+            }
+            return slot;
+          })
+        );
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const res = await getAdminSettingsAction();
+        if (res.success && res.data) {
+          setMaxUploadMb((res.data as { maxUploadSizeMb?: number }).maxUploadSizeMb || 10);
+        }
+      } catch {
+        // Fallback
+      }
+      await loadDocuments();
+    }
+    init();
+  }, [loadDocuments]);
 
   const handleFileUpload = async (type: string, file: File) => {
     if (file.size > maxUploadMb * 1024 * 1024) {
@@ -73,7 +118,7 @@ export default function CandidateDocumentsPage() {
 
     try {
       const res = await requestDocumentUploadUrlAction({
-        candidateId: "demo_candidate_id",
+        candidateId: "cand_default_1",
         documentType: type as DocumentType,
         originalFileName: file.name,
         mimeType: file.type,
@@ -84,9 +129,9 @@ export default function CandidateDocumentsPage() {
         throw new Error(res.error || "Failed to generate presigned upload token.");
       }
 
-      setProgress(60);
+      setProgress(70);
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setProgress(100);
         setDocuments((prev) =>
           prev.map((d) =>
@@ -101,8 +146,9 @@ export default function CandidateDocumentsPage() {
           )
         );
         setUploadingType(null);
-        toast({ title: "Document Uploaded", description: `${file.name} uploaded successfully to Cloudflare R2.`, variant: "success" });
-      }, 800);
+        toast({ title: "Document Uploaded", description: `${file.name} uploaded and saved successfully.`, variant: "success" });
+        await loadDocuments();
+      }, 600);
     } catch (err: unknown) {
       setUploadingType(null);
       const msg = err instanceof Error ? err.message : "Upload failed.";
@@ -110,16 +156,98 @@ export default function CandidateDocumentsPage() {
     }
   };
 
+  const handlePreview = async (label: string, key?: string) => {
+    if (!key) {
+      toast({ title: "Preview Failed", description: "No storage key found for this document.", variant: "destructive" });
+      return;
+    }
+    try {
+      setPreviewTitle(label);
+      setPreviewKey(key);
+      const isImg = key.match(/\.(jpg|jpeg|png|webp)$/i);
+      setPreviewMime(isImg ? "image" : "application/pdf");
+
+      const res = await getPresignedDownloadUrlAction(key);
+      if (res.success && res.url) {
+        setPreviewUrl(res.url);
+      } else {
+        toast({ title: "Preview Error", description: res.error || "Unable to load preview URL.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to open document preview.", variant: "destructive" });
+    }
+  };
+
+  const handleDownload = async (key?: string, filename?: string) => {
+    if (!key) return;
+    try {
+      const res = await getPresignedDownloadUrlAction(key);
+      if (res.success && res.url) {
+        const a = document.createElement("a");
+        a.href = res.url;
+        a.download = filename || "document";
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast({ title: "Download Initiated", description: `Downloading ${filename || "file"}...`, variant: "success" });
+      } else {
+        toast({ title: "Download Error", description: res.error || "Failed to generate download link.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to download document.", variant: "destructive" });
+    }
+  };
+
+  const handleSubmitAllDocuments = () => {
+    setSubmittingAll(true);
+    const requiredPending = documents.filter((d) => d.required && !d.uploadedKey);
+
+    if (requiredPending.length > 0) {
+      toast({
+        title: "Required Documents Missing",
+        description: `Please upload all mandatory documents before submitting: ${requiredPending.map((d) => d.label).join(", ")}`,
+        variant: "destructive",
+      });
+      setSubmittingAll(false);
+      return;
+    }
+
+    setTimeout(() => {
+      setSubmittingAll(false);
+      setIsFinalSubmitted(true);
+      toast({
+        title: "Documents Finalized & Submitted",
+        description: "All mandatory documents have been submitted to Ghazi Overseas verification team.",
+        variant: "success",
+      });
+    }, 1000);
+  };
+
+  const uploadedCount = documents.filter((d) => d.uploadedKey).length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-[#D7E8D8] space-y-6">
       <PageHeader
         title="Upload Required Documents"
         subtitle={`Upload your verified trade credentials directly to our secure Cloudflare R2 vault (Max ${maxUploadMb}MB per document).`}
       />
 
-      <div className="flex items-center gap-3 rounded-2xl border border-[#D7E8D8] bg-white p-4 text-xs font-semibold text-slate-700 shadow-sm">
-        <AlertCircle className="h-5 w-5 text-[#167A3D] shrink-0" />
-        <span>Supported Formats: PDF, JPG, PNG, WEBP. Maximum Limit: {maxUploadMb}MB per file.</span>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-2xl border border-[#D7E8D8] bg-white p-4 text-xs font-semibold text-slate-700 shadow-sm">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-[#167A3D] shrink-0" />
+          <span>Supported Formats: PDF, JPG, PNG, WEBP. Maximum Limit: {maxUploadMb}MB per file.</span>
+        </div>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <Badge variant="outline" className="bg-[#F8FAF8] border-[#D7E8D8] text-[#167A3D] font-extrabold px-3 py-1 text-xs">
+            {uploadedCount} of {documents.length} Uploaded
+          </Badge>
+          {isFinalSubmitted && (
+            <Badge variant="success" className="bg-emerald-100 text-emerald-800 font-extrabold px-3 py-1 text-xs gap-1">
+              <FileCheck className="h-3.5 w-3.5" /> Final Submitted
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -149,25 +277,31 @@ export default function CandidateDocumentsPage() {
                 <div className="flex flex-col gap-3 rounded-xl bg-[#F8FAF8] p-3 border border-[#D7E8D8]">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <FileText className="h-4 w-4 text-[#167A3D]" />
-                    <span className="truncate">{doc.originalName || "Uploaded_Document.pdf"}</span>
+                    <span className="truncate">{doc.originalName || `${doc.type}_document.pdf`}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs gap-1 border-[#D7E8D8]"
-                      onClick={() => {
-                        setPreviewTitle(doc.label);
-                        setPreviewUrl("https://via.placeholder.com/600x400.png?text=Document+Preview+R2+Vault");
-                      }}
+                      onClick={() => handlePreview(doc.label, doc.uploadedKey)}
                     >
-                      <Eye className="h-3.5 w-3.5" /> Preview Document
+                      <Eye className="h-3.5 w-3.5 text-[#167A3D]" /> Preview
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1 border-[#D7E8D8]"
+                      onClick={() => handleDownload(doc.uploadedKey, doc.originalName)}
+                    >
+                      <Download className="h-3.5 w-3.5 text-[#167A3D]" /> Download
                     </Button>
 
                     <label className="cursor-pointer">
                       <Button size="sm" variant="ghost" className="h-8 text-xs gap-1 text-[#167A3D] hover:bg-emerald-50">
-                        <RefreshCw className="h-3.5 w-3.5" /> Replace File
+                        <RefreshCw className="h-3.5 w-3.5" /> Replace
                       </Button>
                       <input
                         type="file"
@@ -215,14 +349,58 @@ export default function CandidateDocumentsPage() {
         ))}
       </div>
 
+      <div className="rounded-2xl border border-[#D7E8D8] bg-white p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Send className="h-5 w-5 text-[#167A3D]" /> Submit Documents for Final Review
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Once all required documents are uploaded, submit them for verification by Ghazi Overseas clearance team.
+          </p>
+        </div>
+
+        <Button
+          onClick={handleSubmitAllDocuments}
+          disabled={submittingAll || isFinalSubmitted}
+          className="bg-[#167A3D] hover:bg-[#0E5D2E] text-white font-extrabold px-6 h-12 rounded-xl text-sm gap-2 shrink-0 shadow-md"
+        >
+          {submittingAll ? "Submitting Application..." : isFinalSubmitted ? "Documents Submitted ✓" : "Submit All Documents"}
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Preview Dialog */}
       <Dialog open={!!previewUrl} onClose={() => setPreviewUrl(null)}>
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-900">{previewTitle}</h3>
-          <div className="flex min-h-[300px] items-center justify-center rounded-xl bg-slate-100 p-6 text-center text-sm font-semibold text-slate-600 border border-slate-200">
-            Document Storage Key Verified in Cloudflare R2 Vault.
+        <div className="space-y-4 max-w-2xl mx-auto">
+          <div className="flex items-center justify-between border-b border-[#D7E8D8] pb-3">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-[#167A3D]" /> {previewTitle}
+            </h3>
+            {previewUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-xs border-[#D7E8D8]"
+                onClick={() => handleDownload(previewKey, previewTitle)}
+              >
+                <Download className="h-3.5 w-3.5 text-[#167A3D]" /> Download Original
+              </Button>
+            )}
           </div>
-          <Button onClick={() => setPreviewUrl(null)} className="w-full bg-[#167A3D] hover:bg-[#0E5D2E]">
-            Close Preview
+
+          <div className="flex min-h-[360px] items-center justify-center rounded-xl bg-slate-900/5 p-2 text-center text-sm font-semibold text-slate-600 border border-slate-200">
+            {previewMime === "image" && previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewUrl} alt={previewTitle} className="max-h-[500px] w-auto object-contain rounded-lg shadow-sm" />
+            ) : previewUrl ? (
+              <iframe src={previewUrl} title={previewTitle} className="w-full h-[500px] rounded-lg border-0" />
+            ) : (
+              <p>Loading document preview...</p>
+            )}
+          </div>
+
+          <Button onClick={() => setPreviewUrl(null)} className="w-full bg-[#167A3D] hover:bg-[#0E5D2E] text-white">
+            Close Preview Window
           </Button>
         </div>
       </Dialog>

@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
 import { candidates } from "@/db/schema/candidates";
-import { systemLogs } from "@/db/schema/logs";
 import { eq, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { LogService } from "@/services/log.service";
 import { CandidateStatus, VerificationStatus } from "@/types";
 
 export class PaymentVerificationService {
@@ -51,15 +51,14 @@ export class PaymentVerificationService {
         .where(eq(candidates.id, data.candidateId))
         .returning();
 
-      // Log payment decision in system audit log
-      await db.insert(systemLogs).values({
-        id: crypto.randomUUID(),
-        level: "info",
-        category: "server",
-        message: `PAYMENT_${data.decision.toUpperCase()}: Candidate ${data.candidateId}`,
-        metadata: { candidateId: data.candidateId, decision: data.decision, reason: data.reason },
-        userId: data.adminUserId,
-      });
+      // Log payment decision in system audit log safely
+      await LogService.recordLog(
+        "info",
+        "server",
+        `PAYMENT_${data.decision.toUpperCase()}: Candidate ${data.candidateId}`,
+        { candidateId: data.candidateId, decision: data.decision, reason: data.reason },
+        data.adminUserId
+      );
 
       logger.info("server", `Payment verified: ${data.decision}`, { candidateId: data.candidateId });
       return updated[0];

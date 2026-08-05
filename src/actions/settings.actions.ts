@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { adminSettingsSchema } from "@/validators/admin.schema";
 import { db } from "@/lib/db";
 import { adminSettings } from "@/db/schema/settings";
@@ -73,6 +74,8 @@ export async function updateAdminSettingsAction(formData: unknown) {
       "UPDATE_ADMIN_SETTINGS: Updated admin payment & feature settings",
       validated as unknown as Record<string, unknown>
     );
+
+    revalidatePath("/", "layout");
 
     logger.info("server", "Admin settings updated successfully", { settingsId: "default_settings" });
 

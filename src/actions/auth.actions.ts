@@ -1,7 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { candidateRegisterSchema, loginSchema, forgotPasswordSchema } from "@/validators/auth.schema";
 import { auth } from "@/lib/auth/auth";
+import { db } from "@/lib/db";
+import { users } from "@/db/schema/users";
+import { eq } from "drizzle-orm";
 import { CandidateService } from "@/services/candidate.service";
 import { logger } from "@/lib/logger";
 
@@ -80,12 +84,22 @@ export async function loginAction(formData: unknown) {
       return { success: false, error: "Invalid email or password credentials." };
     }
 
-    const userRole = (session.user as { role?: string }).role || "candidate";
-    logger.info("auth", "User logged in", { userId: session.user.id, role: userRole });
-    return { success: true, user: session.user, role: userRole };
+    // Enforce role check: Admin users must not log in via candidate login portal
+    const userRecords = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const role = userRecords[0]?.role || (session.user as { role?: string }).role || "candidate";
+
+    if (role === "admin") {
+      return {
+        success: false,
+        error: "Administrator accounts must sign in via the Admin Portal at /admin/login.",
+      };
+    }
+
+    logger.info("auth", "Candidate logged in successfully", { userId: session.user.id, role });
+    return { success: true, user: session.user, role };
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : "Invalid email or password.";
-    logger.error("auth", "Login failed", { error: errMessage });
+    const errMessage = error instanceof Error ? error.message : "Invalid email or password credentials.";
+    logger.error("auth", "Candidate login failed", { error: errMessage });
     return { success: false, error: errMessage };
   }
 }
@@ -94,8 +108,7 @@ export async function adminLoginAction(formData: unknown) {
   try {
     const validated = loginSchema.parse(formData);
 
-    // Hardcoded check for seeded super admin or Better Auth sign in
-    let session: { user?: { id: string; email: string; name: string; role?: string | null } } | null = null;
+    let session;
     try {
       session = await auth.api.signInEmail({
         body: {
@@ -104,47 +117,41 @@ export async function adminLoginAction(formData: unknown) {
         },
       });
     } catch {
-      // Fallback for seeded super admin credentials
-      if (validated.email === "admin@ghazioverseas.com" && validated.password === "Admin@12345") {
-        session = {
-          user: {
-            id: "admin_super_user_id",
-            email: "admin@ghazioverseas.com",
-            name: "Ghazi Super Admin",
-            role: "admin",
-          },
-        };
-      }
+      return { success: false, error: "Invalid admin email or password credentials." };
     }
 
     if (!session || !session.user) {
-      // Handle fallback for seeded admin if sign in email fails
-      if (validated.email === "admin@ghazioverseas.com" && validated.password === "Admin@12345") {
-        session = {
-          user: {
-            id: "admin_super_user_id",
-            email: "admin@ghazioverseas.com",
-            name: "Ghazi Super Admin",
-            role: "admin",
-          },
-        };
-      } else {
-        return { success: false, error: "Invalid email or password credentials." };
-      }
+      return { success: false, error: "Invalid admin email or password credentials." };
     }
 
-    const role = (session.user as { role?: string }).role || "candidate";
+    // Verify admin role in database
+    const dbUsers = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const dbUser = dbUsers[0];
+    const role = dbUser?.role || (session.user as { role?: string }).role;
 
-    // Strictly enforce role === "admin"
-    if (role !== "admin" && validated.email !== "admin@ghazioverseas.com") {
-      logger.warn("auth", "Candidate attempted unauthorized admin portal login", { email: validated.email });
+    if (role !== "admin") {
+      logger.warn("auth", "Unauthorized non-admin attempted admin portal login", { email: validated.email });
       return {
         success: false,
-        error: "You are not authorized to access the Admin Portal.",
+        error: "Access Denied: You do not have administrator permissions.",
       };
     }
 
-    logger.info("auth", "Admin logged in successfully", { userId: session?.user?.id || "admin_super_user_id", email: validated.email });
+    // Set secure session cookie
+    const cookieStore = await cookies();
+    const s = session as unknown as { token?: string; session?: { token: string } };
+    const token = s.token || s.session?.token;
+
+    if (token) {
+      cookieStore.set("better-auth.session_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+      });
+    }
+
+    logger.info("auth", "Admin logged in successfully", { userId: session.user.id, email: validated.email });
     return {
       success: true,
       user: session.user,

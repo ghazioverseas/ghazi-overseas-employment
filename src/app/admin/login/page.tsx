@@ -37,7 +37,6 @@ export default function AdminLoginPage() {
         setErrorMessage(res.error || "Admin authentication failed.");
         toast({ title: "Access Denied", description: res.error, variant: "destructive" });
       } else {
-        document.cookie = "better-auth.session_token=test_admin_verified_session_token; path=/;";
         toast({ title: "Admin Authenticated", description: "Welcome to Admin Control Center.", variant: "success" });
         // Redirect to Admin Dashboard
         window.location.href = "/admin/dashboard";
@@ -77,13 +76,14 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
             <div className="space-y-1.5">
               <Label htmlFor="admin-email">Admin Email Address</Label>
               <Input
                 id="admin-email"
                 type="email"
-                placeholder="admin@ghazioverseas.com"
+                autoComplete="username"
+                placeholder="name@domain.com"
                 {...register("email")}
               />
               {errors.email && (
@@ -106,6 +106,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="admin-password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   className="pr-10"
                   {...register("password")}

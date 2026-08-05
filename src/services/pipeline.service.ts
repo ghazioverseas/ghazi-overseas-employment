@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { jobApplications, interviews, medicals, visas, tickets } from "@/db/schema/pipeline";
-import { eq, desc } from "drizzle-orm";
+import { candidates } from "@/db/schema/candidates";
+import { eq, desc, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export class PipelineService {
@@ -9,7 +10,7 @@ export class PipelineService {
       const existing = await db
         .select()
         .from(jobApplications)
-        .where(eq(jobApplications.candidateId, candidateId))
+        .where(and(eq(jobApplications.candidateId, candidateId), eq(jobApplications.jobId, jobId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -33,6 +34,45 @@ export class PipelineService {
       const errMessage = error instanceof Error ? error.message : "Error applying to job";
       logger.error("database", "Job application failed", { error: errMessage });
       throw new Error(`Job application failed: ${errMessage}`);
+    }
+  }
+
+  static async getJobApplicants(jobId: string) {
+    try {
+      const apps = await db
+        .select({
+          applicationId: jobApplications.id,
+          candidateId: jobApplications.candidateId,
+          stage: jobApplications.stage,
+          appliedAt: jobApplications.createdAt,
+          fullName: candidates.fullName,
+          cnic: candidates.cnic,
+          phone: candidates.phone,
+          profession: candidates.profession,
+          city: candidates.city,
+        })
+        .from(jobApplications)
+        .innerJoin(candidates, eq(jobApplications.candidateId, candidates.id))
+        .where(eq(jobApplications.jobId, jobId))
+        .orderBy(desc(jobApplications.createdAt));
+
+      return apps;
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : "Database error";
+      logger.error("database", "Failed to fetch job applicants", { jobId, error: errMessage });
+      return [];
+    }
+  }
+
+  static async removeJobApplication(applicationId: string) {
+    try {
+      await db.delete(jobApplications).where(eq(jobApplications.id, applicationId));
+      logger.info("database", "Removed specific job application without deleting candidate", { applicationId });
+      return true;
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : "Database error";
+      logger.error("database", "Failed to remove job application", { applicationId, error: errMessage });
+      throw new Error(`Failed to remove job application: ${errMessage}`);
     }
   }
 

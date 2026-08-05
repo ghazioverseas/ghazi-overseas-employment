@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { jobs } from "@/db/schema/jobs";
-import { eq, desc, and, like } from "drizzle-orm";
+import { eq, desc, and, like, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export interface JobInput {
@@ -34,6 +34,82 @@ export interface JobInput {
 }
 
 export class JobService {
+  static async seedInitialJobs() {
+    try {
+      await db
+        .insert(jobs)
+        .values([
+          {
+            id: "job_sample_1",
+            slug: "heavy-duty-driver-saudi-arabia",
+            title: "Heavy Duty Truck Driver",
+            companyName: "Al-Bawardi Logistics Co.",
+            country: "Saudi Arabia",
+            city: "Riyadh",
+            industry: "Transport & Logistics",
+            trade: "Driver",
+            employmentType: "Full Time",
+            salary: 3500,
+            currency: "SAR",
+            contractDuration: "2 Years",
+            workingHours: "8 Hours/Day",
+            benefits: "Overtime + Performance Bonus",
+            foodIncluded: true,
+            accommodationIncluded: true,
+            transportIncluded: true,
+            medicalIncluded: true,
+            airTicketIncluded: true,
+            requiredExperience: 3,
+            requiredEducation: "Matric + HTV License",
+            ageLimit: "23-45 Years",
+            gender: "Male",
+            vacancies: 25,
+            deadline: "2026-12-31",
+            description: "Reputable Saudi logistics enterprise requires experienced Heavy Truck Drivers holding valid HTV license.",
+            responsibilities: "Safely operate heavy trailer trucks across inter-city highways.",
+            requirements: "Valid Pakistani HTV License, 3+ years experience, clean driving record.",
+            status: "published",
+          },
+          {
+            id: "job_sample_2",
+            slug: "industrial-welder-qatar",
+            title: "Industrial Pipe Welder (6G)",
+            companyName: "Qatar Energy Infrastructure",
+            country: "Qatar",
+            city: "Doha",
+            industry: "Oil & Gas Construction",
+            trade: "Welder",
+            employmentType: "Full Time",
+            salary: 4200,
+            currency: "QAR",
+            contractDuration: "2 Years",
+            workingHours: "8 Hours/Day",
+            benefits: "Medical + Overtime + Flight Ticket",
+            foodIncluded: true,
+            accommodationIncluded: true,
+            transportIncluded: true,
+            medicalIncluded: true,
+            airTicketIncluded: true,
+            requiredExperience: 4,
+            requiredEducation: "Technical Diploma / Trade Test Certified",
+            ageLimit: "22-42 Years",
+            gender: "Male",
+            vacancies: 15,
+            deadline: "2026-11-30",
+            description: "6G TIG & ARC Welders needed for oil & gas refinery expansion project in Doha, Qatar.",
+            responsibilities: "Perform high-pressure pipe welding tests and structural joint welds.",
+            requirements: "Passed 6G welding certification test, minimum 4 years industrial experience.",
+            status: "published",
+          },
+        ])
+        .onConflictDoNothing();
+      logger.info("database", "Seeded initial default jobs into DB successfully");
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : "Failed seeding initial jobs";
+      logger.error("database", "Initial job seeding error", { error: errMessage });
+    }
+  }
+
   static async createJob(input: JobInput) {
     try {
       const id = `job_${Date.now()}`;
@@ -65,6 +141,12 @@ export class JobService {
     sortBy?: "newest" | "salary";
   }) {
     try {
+      // 1. Ensure DB has initial sample jobs if completely empty
+      const countRes = await db.select({ count: sql<number>`count(*)` }).from(jobs);
+      if (Number(countRes[0]?.count || 0) === 0) {
+        await this.seedInitialJobs();
+      }
+
       const conditions = [];
       if (filters?.status) {
         conditions.push(eq(jobs.status, filters.status as "draft" | "published" | "archived"));
@@ -82,51 +164,11 @@ export class JobService {
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
       const orderClause = filters?.sortBy === "salary" ? desc(jobs.salary) : desc(jobs.createdAt);
 
-      const results = await db
+      return await db
         .select()
         .from(jobs)
         .where(whereClause)
         .orderBy(orderClause);
-
-      if (results.length === 0) {
-        return [
-          {
-            id: "job_sample_1",
-            slug: "heavy-duty-driver-saudi-arabia",
-            title: "Heavy Duty Truck Driver",
-            companyName: "Al-Bawardi Logistics Co.",
-            country: "Saudi Arabia",
-            city: "Riyadh",
-            industry: "Transport & Logistics",
-            trade: "Driver",
-            employmentType: "Full Time",
-            salary: 3500,
-            currency: "SAR",
-            contractDuration: "2 Years",
-            workingHours: "8 Hours/Day",
-            benefits: "Overtime + Performance Bonus",
-            foodIncluded: true,
-            accommodationIncluded: true,
-            transportIncluded: true,
-            medicalIncluded: true,
-            airTicketIncluded: true,
-            requiredExperience: 3,
-            requiredEducation: "Matric + HTV License",
-            ageLimit: "23-45 Years",
-            gender: "Male",
-            vacancies: 25,
-            deadline: "2026-12-31",
-            description: "Reputable Saudi logistics enterprise requires experienced Heavy Truck Drivers holding valid HTV license.",
-            responsibilities: "Safely operate heavy trailer trucks across inter-city highways.",
-            requirements: "Valid Pakistani HTV License, 3+ years experience, clean driving record.",
-            status: "published" as const,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ];
-      }
-
-      return results;
     } catch (error: unknown) {
       const errMessage = error instanceof Error ? error.message : "Error fetching jobs";
       logger.error("database", "Failed to fetch jobs", { error: errMessage });

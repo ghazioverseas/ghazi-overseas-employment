@@ -1,7 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminUserSchema } from "@/validators/admin.schema";
 import { auth } from "@/lib/auth/auth";
+import { db } from "@/lib/db";
+import { users } from "@/db/schema/users";
+import { eq } from "drizzle-orm";
 import { PaymentVerificationService } from "@/services/payment.service";
 import { AutoDeleteService } from "@/services/auto-delete.service";
 import { AdminService } from "@/services/admin.service";
@@ -89,6 +93,21 @@ export async function createAdminUserAction(formData: unknown) {
   try {
     const validated = createAdminUserSchema.parse(formData);
 
+    // 1. Check if account already exists in DB
+    const existing = await db.select().from(users).where(eq(users.email, validated.email)).limit(1);
+
+    if (existing.length > 0) {
+      await db.update(users).set({ role: "admin" }).where(eq(users.id, existing[0].id));
+      revalidatePath("/admin/admins");
+      logger.info("auth", "Promoted existing user account to admin role", { email: validated.email });
+      return {
+        success: true,
+        message: `User account ${validated.email} was updated to Administrator.`,
+        user: { ...existing[0], role: "admin" },
+      };
+    }
+
+    // 2. Create user account via Better Auth
     const newUser = await auth.api.signUpEmail({
       body: {
         email: validated.email,
@@ -97,11 +116,20 @@ export async function createAdminUserAction(formData: unknown) {
       },
     });
 
-    logger.info("auth", "New admin user account created", { email: validated.email });
+    if (!newUser || !newUser.user) {
+      return { success: false, error: "Failed to create admin user account." };
+    }
+
+    // 3. Explicitly update role to 'admin' in the database users table
+    await db.update(users).set({ role: "admin" }).where(eq(users.id, newUser.user.id));
+
+    revalidatePath("/admin/admins");
+
+    logger.info("auth", "New admin account created successfully", { email: validated.email });
     return {
       success: true,
-      message: "Admin account created successfully.",
-      user: newUser.user,
+      message: `Admin account for ${validated.fullName} created successfully.`,
+      user: { ...newUser.user, role: "admin" },
     };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to create admin user.";

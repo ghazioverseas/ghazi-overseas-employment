@@ -6,8 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SettingsService } from "@/services/settings.service";
-import { updateAdminSettingsAction } from "@/actions/settings.actions";
+import { getAdminSettingsAction, updateAdminSettingsAction } from "@/actions/settings.actions";
 import { Save, Building2, CreditCard, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,13 +16,21 @@ interface SettingsRecord {
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
+  submissionFee?: number;
   isSubmissionFeeEnabled?: boolean;
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
+  iban?: string;
   showBank?: boolean;
+  easypaisaTitle?: string;
+  easypaisaNumber?: string;
   showEasypaisa?: boolean;
+  jazzcashTitle?: string;
+  jazzcashNumber?: string;
   showJazzcash?: boolean;
   autoDeleteDays?: number;
   maxUploadSizeMb?: number;
-  [key: string]: unknown;
 }
 
 export default function AdminSettingsPage() {
@@ -56,8 +63,9 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     async function loadSettings() {
       try {
-        const s = (await SettingsService.getPaymentSettings()) as SettingsRecord;
-        if (s) {
+        const res = await getAdminSettingsAction();
+        if (res.success && res.data) {
+          const s = res.data as SettingsRecord;
           setFormData((prev) => ({
             ...prev,
             ...s,
@@ -66,9 +74,18 @@ export default function AdminSettingsPage() {
             companyAddress: s.companyAddress || prev.companyAddress,
             companyPhone: s.companyPhone || prev.companyPhone,
             companyEmail: s.companyEmail || prev.companyEmail,
+            submissionFee: s.submissionFee ?? prev.submissionFee,
             isSubmissionFeeEnabled: s.isSubmissionFeeEnabled ?? prev.isSubmissionFeeEnabled,
+            bankName: s.bankName || prev.bankName,
+            accountTitle: s.accountTitle || prev.accountTitle,
+            accountNumber: s.accountNumber || prev.accountNumber,
+            iban: s.iban || prev.iban,
             showBank: s.showBank ?? prev.showBank,
+            easypaisaTitle: s.easypaisaTitle || prev.easypaisaTitle,
+            easypaisaNumber: s.easypaisaNumber || prev.easypaisaNumber,
             showEasypaisa: s.showEasypaisa ?? prev.showEasypaisa,
+            jazzcashTitle: s.jazzcashTitle || prev.jazzcashTitle,
+            jazzcashNumber: s.jazzcashNumber || prev.jazzcashNumber,
             showJazzcash: s.showJazzcash ?? prev.showJazzcash,
             autoDeleteDays: s.autoDeleteDays ?? prev.autoDeleteDays,
             maxUploadSizeMb: s.maxUploadSizeMb ?? prev.maxUploadSizeMb,
@@ -110,7 +127,6 @@ export default function AdminSettingsPage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section 1: General Company Settings */}
         <Card className="border-[#D7E8D8] bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 text-base font-bold flex items-center gap-2">
@@ -165,7 +181,6 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {/* Submission Fee Toggle */}
             <div className="rounded-xl border border-[#D7E8D8] bg-[#F8FAF8] p-4 flex items-center justify-between mt-2">
               <div>
                 <Label htmlFor="isSubmissionFeeEnabled" className="font-bold text-slate-900 text-sm">
@@ -196,7 +211,6 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Section 2: Payment Method Settings & Show/Hide Toggles */}
         <Card className="border-[#D7E8D8] bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 text-base font-bold flex items-center gap-2">
@@ -207,7 +221,6 @@ export default function AdminSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Bank Transfer */}
             <div className="rounded-xl border border-[#D7E8D8] p-4 space-y-3 bg-[#F8FAF8]">
               <div className="flex items-center justify-between border-b border-[#D7E8D8] pb-2">
                 <span className="font-bold text-[#167A3D] text-sm">Bank Transfer Settings (Meezan Bank)</span>
@@ -243,7 +256,6 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {/* EasyPaisa */}
             <div className="rounded-xl border border-[#D7E8D8] p-4 space-y-3 bg-[#F8FAF8]">
               <div className="flex items-center justify-between border-b border-[#D7E8D8] pb-2">
                 <span className="font-bold text-[#167A3D] text-sm">EasyPaisa Mobile Account</span>
@@ -271,7 +283,6 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            {/* JazzCash */}
             <div className="rounded-xl border border-[#D7E8D8] p-4 space-y-3 bg-[#F8FAF8]">
               <div className="flex items-center justify-between border-b border-[#D7E8D8] pb-2">
                 <span className="font-bold text-[#167A3D] text-sm">JazzCash Mobile Account</span>
@@ -301,7 +312,6 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Section 3: Auto-Delete & Cloudflare R2 Upload Limits */}
         <Card className="border-[#D7E8D8] bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 text-base font-bold flex items-center gap-2">

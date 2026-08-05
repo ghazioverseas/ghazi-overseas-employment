@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Upload, FileText, CheckCircle2, Eye, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { requestDocumentUploadUrlAction } from "@/actions/document.actions";
+import { getAdminSettingsAction } from "@/actions/settings.actions";
 import { DocumentType } from "@/types";
 
 interface DocumentSlot {
@@ -26,6 +27,21 @@ export default function CandidateDocumentsPage() {
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("");
+  const [maxUploadMb, setMaxUploadMb] = useState(10);
+
+  useEffect(() => {
+    async function loadUploadLimit() {
+      try {
+        const res = await getAdminSettingsAction();
+        if (res.success && res.data) {
+          setMaxUploadMb((res.data as { maxUploadSizeMb?: number }).maxUploadSizeMb || 10);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadUploadLimit();
+  }, []);
 
   const [documents, setDocuments] = useState<DocumentSlot[]>([
     { type: "passport", label: "Original Passport Copy (Page 1 & 2)", required: true },
@@ -37,13 +53,15 @@ export default function CandidateDocumentsPage() {
   ]);
 
   const handleFileUpload = async (type: string, file: File) => {
-    // 1. Check size limit 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Upload Error", description: "File size exceeds maximum allowed 10MB limit.", variant: "destructive" });
+    if (file.size > maxUploadMb * 1024 * 1024) {
+      toast({
+        title: "Upload Error",
+        description: `File size exceeds maximum allowed ${maxUploadMb}MB limit set by admin settings.`,
+        variant: "destructive",
+      });
       return;
     }
 
-    // 2. Check MIME type
     const validMimes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!validMimes.includes(file.type)) {
       toast({ title: "Upload Error", description: "Invalid file format. Only PDF, JPG, PNG, and WebP are supported.", variant: "destructive" });
@@ -54,7 +72,6 @@ export default function CandidateDocumentsPage() {
     setProgress(20);
 
     try {
-      // 3. Request presigned upload URL from server action
       const res = await requestDocumentUploadUrlAction({
         candidateId: "demo_candidate_id",
         documentType: type as DocumentType,
@@ -69,7 +86,6 @@ export default function CandidateDocumentsPage() {
 
       setProgress(60);
 
-      // Simulate presigned S3/R2 direct PUT upload progress
       setTimeout(() => {
         setProgress(100);
         setDocuments((prev) =>
@@ -98,16 +114,14 @@ export default function CandidateDocumentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Upload Required Documents"
-        subtitle="Upload your verified trade credentials directly to our secure Cloudflare R2 vault (Max 10MB per document)."
+        subtitle={`Upload your verified trade credentials directly to our secure Cloudflare R2 vault (Max ${maxUploadMb}MB per document).`}
       />
 
-      {/* Info Banner */}
       <div className="flex items-center gap-3 rounded-2xl border border-[#D7E8D8] bg-white p-4 text-xs font-semibold text-slate-700 shadow-sm">
         <AlertCircle className="h-5 w-5 text-[#167A3D] shrink-0" />
-        <span>Supported Formats: PDF, JPG, PNG, WEBP. All documents will be verified by Ghazi Overseas Admin.</span>
+        <span>Supported Formats: PDF, JPG, PNG, WEBP. Maximum Limit: {maxUploadMb}MB per file.</span>
       </div>
 
-      {/* Documents Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {documents.map((doc) => (
           <Card key={doc.type} className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all">
@@ -181,7 +195,7 @@ export default function CandidateDocumentsPage() {
                     <label className="flex flex-col items-center cursor-pointer w-full">
                       <Upload className="h-8 w-8 text-[#167A3D] mb-2" />
                       <span className="text-xs font-bold text-slate-800">Click to upload or drag file</span>
-                      <span className="text-[10px] text-slate-500 mt-1">Max 10MB (PDF, JPG, PNG, WEBP)</span>
+                      <span className="text-[10px] text-slate-500 mt-1">Max {maxUploadMb}MB (PDF, JPG, PNG, WEBP)</span>
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -201,12 +215,11 @@ export default function CandidateDocumentsPage() {
         ))}
       </div>
 
-      {/* Document Preview Modal */}
       <Dialog open={!!previewUrl} onClose={() => setPreviewUrl(null)}>
         <div className="space-y-4">
           <h3 className="text-lg font-bold text-slate-900">{previewTitle}</h3>
           <div className="flex min-h-[300px] items-center justify-center rounded-xl bg-slate-100 p-6 text-center text-sm font-semibold text-slate-600 border border-slate-200">
-            Document Document Storage Key Verified in Cloudflare R2 Vault.
+            Document Storage Key Verified in Cloudflare R2 Vault.
           </div>
           <Button onClick={() => setPreviewUrl(null)} className="w-full bg-[#167A3D] hover:bg-[#0E5D2E]">
             Close Preview

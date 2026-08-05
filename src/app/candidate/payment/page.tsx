@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { CreditCard, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitPaymentProofAction } from "@/actions/payment.actions";
+import { getAdminSettingsAction } from "@/actions/settings.actions";
 
 export default function CandidatePaymentPage() {
   const { toast } = useToast();
@@ -18,6 +19,21 @@ export default function CandidatePaymentPage() {
   const [transactionRef, setTransactionRef] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "easypaisa" | "jazzcash">("bank_transfer");
   const [paymentStatus, setPaymentStatus] = useState<"pending_payment" | "payment_under_review" | "approved" | "rejected">("pending_payment");
+  const [submissionFee, setSubmissionFee] = useState(500);
+
+  useEffect(() => {
+    async function loadFee() {
+      try {
+        const res = await getAdminSettingsAction();
+        if (res.success && res.data) {
+          setSubmissionFee((res.data as { submissionFee?: number }).submissionFee || 500);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadFee();
+  }, []);
 
   const handleSubmitProof = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +75,6 @@ export default function CandidatePaymentPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {/* Payment Status Overview */}
         <Card className="border-[#D7E8D8] bg-white shadow-sm md:col-span-1">
           <CardHeader>
             <CardTitle className="text-[#167A3D] text-lg font-bold">Payment Status</CardTitle>
@@ -73,7 +88,7 @@ export default function CandidatePaymentPage() {
 
             <div className="rounded-xl bg-[#F8FAF8] p-4 border border-[#D7E8D8] text-xs space-y-2">
               <p className="font-bold text-slate-900">Mandatory Submission Fee:</p>
-              <p className="text-xl font-black text-[#167A3D]">Rs. 500</p>
+              <p className="text-xl font-black text-[#167A3D]">Rs. {submissionFee}</p>
               <p className="text-slate-500 pt-1">
                 {paymentStatus === "payment_under_review" && "Your transaction is undergoing admin verification."}
                 {paymentStatus === "approved" && "Payment Verified! Your application has been approved."}
@@ -83,7 +98,6 @@ export default function CandidatePaymentPage() {
           </CardContent>
         </Card>
 
-        {/* Transaction Reference Submission Form */}
         <Card className="border-[#D7E8D8] bg-white shadow-sm md:col-span-2">
           <CardHeader>
             <CardTitle className="text-slate-900 text-lg font-bold">Submit Payment Reference</CardTitle>

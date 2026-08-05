@@ -30,6 +30,10 @@ yarn-error.log*
 !.env.example
 !.env.local.example
 
+# test scripts
+test-connections.mjs
+test-production-readiness.mjs
+
 # drizzle output
 /src/db/migrations/meta
 

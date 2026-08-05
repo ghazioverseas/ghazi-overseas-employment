@@ -1,0 +1,37 @@
+import { pgTable, text, timestamp, integer, boolean, pgEnum } from "drizzle-orm/pg-core";
+
+export const jobStatusEnum = pgEnum("job_status", ["draft", "published", "archived"]);
+
+export const jobs = pgTable("jobs", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  companyName: text("company_name").notNull(),
+  country: text("country").notNull(),
+  city: text("city").notNull(),
+  industry: text("industry").notNull(),
+  trade: text("trade").notNull(),
+  employmentType: text("employment_type").default("Full Time").notNull(),
+  salary: integer("salary").notNull(),
+  currency: text("currency").default("SAR").notNull(),
+  contractDuration: text("contract_duration").default("2 Years").notNull(),
+  workingHours: text("working_hours").default("8 Hours/Day").notNull(),
+  benefits: text("benefits"),
+  foodIncluded: boolean("food_included").default(true).notNull(),
+  accommodationIncluded: boolean("accommodation_included").default(true).notNull(),
+  transportIncluded: boolean("transport_included").default(true).notNull(),
+  medicalIncluded: boolean("medical_included").default(true).notNull(),
+  airTicketIncluded: boolean("air_ticket_included").default(true).notNull(),
+  requiredExperience: integer("required_experience").default(2).notNull(),
+  requiredEducation: text("required_education").default("Matric/Intermediate").notNull(),
+  ageLimit: text("age_limit").default("21-45 Years"),
+  gender: text("gender").default("Male"),
+  vacancies: integer("vacancies").default(10).notNull(),
+  deadline: text("deadline"),
+  description: text("description").notNull(),
+  responsibilities: text("responsibilities"),
+  requirements: text("requirements"),
+  status: jobStatusEnum("status").default("published").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

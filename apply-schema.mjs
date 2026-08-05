@@ -20,9 +20,16 @@ if (fs.existsSync(envLocalPath)) {
 const sql = neon(process.env.DATABASE_URL);
 
 async function applyPhase3SchemaUpdates() {
-  console.log("=== Applying Phase 3 Extended Schema to Neon DB ===");
+  console.log("=== Applying Extended Schema Updates to Neon DB ===");
   try {
-    // 1. Extended Admin Settings Columns
+    // 1. Better Auth Accounts Columns (password, id_token, scope, etc.)
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS password text;`;
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS id_token text;`;
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS access_token_expires_at timestamp;`;
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS refresh_token_expires_at timestamp;`;
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS scope text;`;
+
+    // 2. Extended Admin Settings Columns
     await sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS company_name text DEFAULT 'Ghazi Overseas Employment Pakistan' NOT NULL;`;
     await sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS company_website text DEFAULT 'https://ghazioverseas.pk' NOT NULL;`;
     await sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS company_address text DEFAULT 'Karachi / Islamabad Commercial Zone, Pakistan' NOT NULL;`;
@@ -35,7 +42,7 @@ async function applyPhase3SchemaUpdates() {
     await sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS auto_delete_days integer DEFAULT 30 NOT NULL;`;
     await sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS max_upload_size_mb integer DEFAULT 10 NOT NULL;`;
 
-    // 2. Application Notes Table
+    // 3. Application Notes Table
     await sql`CREATE TABLE IF NOT EXISTS application_notes (
       id text PRIMARY KEY NOT NULL,
       candidate_id text NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
@@ -46,9 +53,9 @@ async function applyPhase3SchemaUpdates() {
       updated_at timestamp DEFAULT now() NOT NULL
     );`;
 
-    console.log("✓ Phase 3 Database Schema Updates Applied Successfully to Neon DB!");
+    console.log("✓ Database Schema Updates Applied Successfully to Neon DB!");
   } catch (err) {
-    console.error("❌ Phase 3 Schema Error:", err.message);
+    console.error("❌ Schema Update Error:", err.message);
     process.exit(1);
   }
 }

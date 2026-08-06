@@ -106,10 +106,10 @@ export default function CandidateDocumentsPage() {
           setCandidateId(profileRes.data.id);
           await loadDocuments(profileRes.data.id);
         } else {
-          await loadDocuments();
+          await loadDocuments("current");
         }
       } catch {
-        await loadDocuments();
+        await loadDocuments("current");
       }
     }
     init();
@@ -179,7 +179,7 @@ export default function CandidateDocumentsPage() {
       );
       setUploadingType(null);
       toast({ title: "Document Uploaded", description: `${file.name} uploaded to secure storage successfully.`, variant: "success" });
-      await loadDocuments(candidateId || undefined);
+      await loadDocuments(candidateId || "current");
     } catch (err: unknown) {
       setUploadingType(null);
       const msg = err instanceof Error ? err.message : "Upload failed.";

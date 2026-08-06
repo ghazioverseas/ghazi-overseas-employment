@@ -65,7 +65,7 @@ import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 export async function getCandidateDocumentsAction(candidateId?: string) {
   try {
     let targetId = candidateId;
-    if (!targetId || targetId === "cand_default_1" || targetId === "demo_candidate_id") {
+    if (!targetId || targetId === "cand_default_1" || targetId === "demo_candidate_id" || targetId === "current") {
       const profileRes = await getCurrentCandidateProfileAction();
       if (profileRes.success && profileRes.data) {
         targetId = profileRes.data.id;

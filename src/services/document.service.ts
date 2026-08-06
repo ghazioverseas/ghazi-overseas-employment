@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { documents } from "@/db/schema/documents";
 import { candidates } from "@/db/schema/candidates";
-import { users } from "@/db/schema/users";
 import { eq, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { DocumentType } from "@/types";
@@ -9,7 +8,7 @@ import { DocumentType } from "@/types";
 export class DocumentService {
   private static async ensureValidCandidateId(targetCandidateId: string): Promise<string> {
     try {
-      if (!targetCandidateId) return "";
+      if (!targetCandidateId || targetCandidateId === "current") return "";
 
       // 1. Check if candidate record exists by candidate ID
       const existing = await db
@@ -31,40 +30,6 @@ export class DocumentService {
 
       if (existingByUser.length > 0) {
         return existingByUser[0].id;
-      }
-
-      // 3. Check if any candidate record exists in DB
-      const anyCandidate = await db.select().from(candidates).limit(1);
-      if (anyCandidate.length > 0) {
-        return anyCandidate[0].id;
-      }
-
-      // 4. Fallback: Query a real existing user from users table so foreign key users_id_fk is satisfied
-      const existingUser = await db.select().from(users).limit(1);
-      if (existingUser.length > 0) {
-        const validUserId = existingUser[0].id;
-        const newCandId = targetCandidateId && targetCandidateId.length > 5 ? targetCandidateId : `cand_${Date.now()}`;
-
-        const [newCand] = await db
-          .insert(candidates)
-          .values({
-            id: newCandId,
-            userId: validUserId,
-            fullName: "Registered Candidate",
-            cnic: `42101-${Math.floor(1000000 + Math.random() * 9000000)}-1`,
-            phone: "03000000000",
-            status: "registered",
-            paymentStatus: "pending_payment",
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        if (newCand) {
-          return newCand.id;
-        }
-
-        const reCheck = await db.select().from(candidates).where(eq(candidates.id, newCandId)).limit(1);
-        return reCheck[0]?.id || targetCandidateId;
       }
 
       return targetCandidateId;

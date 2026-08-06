@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { candidateRegisterSchema, loginSchema, forgotPasswordSchema } from "@/validators/auth.schema";
 import { auth } from "@/lib/auth/auth";
 import { db } from "@/lib/db";
@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 export async function registerCandidateAction(formData: unknown) {
   try {
     const validated = candidateRegisterSchema.parse(formData);
+    const reqHeaders = await headers();
     
     // 1. Create user account via Better Auth
     const newUser = await auth.api.signUpEmail({
@@ -20,6 +21,7 @@ export async function registerCandidateAction(formData: unknown) {
         password: validated.password,
         name: validated.fullName,
       },
+      headers: reqHeaders,
     });
 
     if (!newUser || !newUser.user) {
@@ -55,6 +57,7 @@ export async function registerCandidateAction(formData: unknown) {
         email: validated.email,
         password: validated.password,
       },
+      headers: reqHeaders,
     });
 
     return {
@@ -72,12 +75,14 @@ export async function registerCandidateAction(formData: unknown) {
 export async function loginAction(formData: unknown) {
   try {
     const validated = loginSchema.parse(formData);
+    const reqHeaders = await headers();
 
     const session = await auth.api.signInEmail({
       body: {
         email: validated.email,
         password: validated.password,
       },
+      headers: reqHeaders,
     });
 
     if (!session || !session.user) {
@@ -95,6 +100,32 @@ export async function loginAction(formData: unknown) {
       };
     }
 
+    // Set secure session cookie
+    const cookieStore = await cookies();
+    const s = session as unknown as { token?: string; session?: { token: string } };
+    const token = s.token || s.session?.token;
+
+    if (token) {
+      const maxAge = 7 * 24 * 60 * 60; // 7 days
+      cookieStore.set("better-auth.session_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+        maxAge,
+      });
+
+      if (process.env.NODE_ENV === "production") {
+        cookieStore.set("__Secure-better-auth.session_token", token, {
+          httpOnly: true,
+          secure: true,
+          path: "/",
+          sameSite: "lax",
+          maxAge,
+        });
+      }
+    }
+
     logger.info("auth", "Candidate logged in successfully", { userId: session.user.id, role });
     return { success: true, user: session.user, role };
   } catch (error: unknown) {
@@ -107,6 +138,7 @@ export async function loginAction(formData: unknown) {
 export async function adminLoginAction(formData: unknown) {
   try {
     const validated = loginSchema.parse(formData);
+    const reqHeaders = await headers();
 
     let session;
     try {
@@ -115,6 +147,7 @@ export async function adminLoginAction(formData: unknown) {
           email: validated.email,
           password: validated.password,
         },
+        headers: reqHeaders,
       });
     } catch {
       return { success: false, error: "Invalid admin email or password credentials." };
@@ -143,12 +176,24 @@ export async function adminLoginAction(formData: unknown) {
     const token = s.token || s.session?.token;
 
     if (token) {
+      const maxAge = 7 * 24 * 60 * 60; // 7 days
       cookieStore.set("better-auth.session_token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         path: "/",
         sameSite: "lax",
+        maxAge,
       });
+
+      if (process.env.NODE_ENV === "production") {
+        cookieStore.set("__Secure-better-auth.session_token", token, {
+          httpOnly: true,
+          secure: true,
+          path: "/",
+          sameSite: "lax",
+          maxAge,
+        });
+      }
     }
 
     logger.info("auth", "Admin logged in successfully", { userId: session.user.id, email: validated.email });

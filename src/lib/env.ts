@@ -10,7 +10,8 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   NEXT_PUBLIC_APP_NAME: z.string().default("Ghazi Employment Portal"),
   NEXT_PUBLIC_COMPANY_NAME: z.string().default("Ghazi Overseas Employment Pakistan"),
-  NEXT_PUBLIC_BASE_URL: z.string().default("http://localhost:3000"),
+  NEXT_PUBLIC_BASE_URL: z.string().optional(),
+  VERCEL_URL: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -24,4 +25,6 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   NEXT_PUBLIC_COMPANY_NAME: process.env.NEXT_PUBLIC_COMPANY_NAME,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+  VERCEL_URL: process.env.VERCEL_URL,
 });
+

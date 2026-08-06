@@ -136,7 +136,7 @@ export default function CandidateDocumentsPage() {
 
     try {
       const res = await requestDocumentUploadUrlAction({
-        candidateId: candidateId || "cand_default_1",
+        candidateId: candidateId || "",
         documentType: type as DocumentType,
         originalFileName: file.name,
         mimeType: file.type,

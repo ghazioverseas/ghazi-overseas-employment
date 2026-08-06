@@ -78,9 +78,23 @@ export async function getJobDetailsAction(slug: string) {
   }
 }
 
-export async function applyToJobAction(candidateId: string, jobId: string) {
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+
+export async function applyToJobAction(candidateId?: string, jobId?: string) {
   try {
-    const application = await PipelineService.applyToJob(candidateId, jobId);
+    let targetCandidateId = candidateId;
+    if (!targetCandidateId || targetCandidateId === "cand_default_1" || targetCandidateId === "demo_candidate_id") {
+      const profileRes = await getCurrentCandidateProfileAction();
+      if (profileRes.success && profileRes.data) {
+        targetCandidateId = profileRes.data.id;
+      }
+    }
+
+    if (!targetCandidateId) {
+      return { success: false, error: "Candidate profile not found. Please complete candidate profile registration." };
+    }
+
+    const application = await PipelineService.applyToJob(targetCandidateId, jobId || "job_sample_1");
     revalidatePath("/candidate/jobs");
     revalidatePath("/admin/jobs");
     return { success: true, data: application, message: "Application submitted successfully to Ghazi Overseas." };

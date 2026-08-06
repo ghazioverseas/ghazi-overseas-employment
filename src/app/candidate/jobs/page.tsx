@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Briefcase, MapPin, DollarSign, Clock, CheckCircle2, Search, Send, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPublicJobsAction, applyToJobAction } from "@/actions/job.actions";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 
 interface JobItem {
   id: string;
@@ -59,7 +60,8 @@ export default function CandidateJobsPage() {
   const handleApply = async (jobId: string, jobTitle: string) => {
     setApplyingId(jobId);
     try {
-      const candidateId = "cand_default_1";
+      const profileRes = await getCurrentCandidateProfileAction();
+      const candidateId = profileRes.success && profileRes.data ? profileRes.data.id : undefined;
       const res = await applyToJobAction(candidateId, jobId);
       if (res.success) {
         setAppliedJobIds((prev) => [...prev, jobId]);

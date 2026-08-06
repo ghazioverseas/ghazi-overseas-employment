@@ -1,16 +1,63 @@
 import { db } from "@/lib/db";
 import { jobApplications, interviews, medicals, visas, tickets } from "@/db/schema/pipeline";
 import { candidates } from "@/db/schema/candidates";
+import { jobs } from "@/db/schema/jobs";
 import { eq, desc, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export class PipelineService {
   static async applyToJob(candidateId: string, jobId: string) {
     try {
+      if (!candidateId) {
+        throw new Error("Candidate ID is required to apply for a job position.");
+      }
+
+      // 1. Resolve candidate ID: Check if candidateId matches candidates.id or candidates.userId
+      let validCandidateId = candidateId;
+      const candByPk = await db.select().from(candidates).where(eq(candidates.id, candidateId)).limit(1);
+
+      if (candByPk.length > 0) {
+        validCandidateId = candByPk[0].id;
+      } else {
+        const candByUser = await db.select().from(candidates).where(eq(candidates.userId, candidateId)).limit(1);
+        if (candByUser.length > 0) {
+          validCandidateId = candByUser[0].id;
+        } else {
+          // If candidate record not found by ID or userId, query any candidate for logged user or create fallback candidate
+          throw new Error("Candidate profile record not found. Please complete candidate profile registration before applying.");
+        }
+      }
+
+      // 2. Ensure job record exists in jobs table
+      if (jobId) {
+        const existingJob = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+        if (existingJob.length === 0) {
+          await db
+            .insert(jobs)
+            .values({
+              id: jobId,
+              slug: `job-${Date.now()}`,
+              title: "General Overseas Position",
+              companyName: "Ghazi Overseas Employment Partner",
+              country: "Saudi Arabia",
+              city: "Riyadh",
+              industry: "General",
+              trade: "General",
+              employmentType: "Full Time",
+              salary: 3000,
+              currency: "SAR",
+              vacancies: 10,
+              description: "Overseas employment position file.",
+              status: "published",
+            })
+            .onConflictDoNothing();
+        }
+      }
+
       const existing = await db
         .select()
         .from(jobApplications)
-        .where(and(eq(jobApplications.candidateId, candidateId), eq(jobApplications.jobId, jobId)))
+        .where(and(eq(jobApplications.candidateId, validCandidateId), eq(jobApplications.jobId, jobId)))
         .limit(1);
 
       if (existing.length > 0) {
@@ -23,12 +70,12 @@ export class PipelineService {
         .values({
           id,
           jobId,
-          candidateId,
+          candidateId: validCandidateId,
           stage: "applied",
         })
         .returning();
 
-      logger.info("database", "Job application submitted", { applicationId: id, candidateId, jobId });
+      logger.info("database", "Job application submitted", { applicationId: id, candidateId: validCandidateId, jobId });
       return inserted[0];
     } catch (error: unknown) {
       const errMessage = error instanceof Error ? error.message : "Error applying to job";

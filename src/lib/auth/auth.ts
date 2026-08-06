@@ -3,16 +3,31 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 import * as schema from "@/db/schema";
 
+const sanitizeUrl = (rawUrl?: string): string | null => {
+  if (!rawUrl) return null;
+  let cleaned = rawUrl.trim().replace(/\s+/g, "");
+  if (!cleaned) return null;
+  if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
+    cleaned = `https://${cleaned}`;
+  }
+  try {
+    const parsed = new URL(cleaned);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+};
+
 const getAuthBaseUrl = () => {
-  if (process.env.BETTER_AUTH_URL) {
-    return process.env.BETTER_AUTH_URL;
+  const envUrl =
+    sanitizeUrl(process.env.BETTER_AUTH_URL) ||
+    sanitizeUrl(process.env.NEXT_PUBLIC_BASE_URL) ||
+    sanitizeUrl(process.env.VERCEL_URL);
+
+  if (envUrl) {
+    return envUrl;
   }
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    return process.env.NEXT_PUBLIC_BASE_URL;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
+
   return "http://localhost:3000";
 };
 
@@ -44,6 +59,8 @@ export const auth = betterAuth({
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://*.vercel.app",
+    "https://ghazi-overseas-employment.vercel.app",
   ],
 });
+
 

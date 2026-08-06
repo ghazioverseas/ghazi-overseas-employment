@@ -12,7 +12,7 @@ export const documentTypeSchema = z.enum([
 ]);
 
 export const documentUploadSchema = z.object({
-  candidateId: z.string().min(1, "Candidate ID is required"),
+  candidateId: z.string().optional().default("current"),
   documentType: documentTypeSchema,
   originalFileName: z.string().min(1, "File name is required"),
   mimeType: z.string().refine(

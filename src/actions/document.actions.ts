@@ -11,9 +11,11 @@ export async function requestDocumentUploadUrlAction(formData: unknown) {
     const validated = documentUploadSchema.parse(formData);
 
     let candidateId = validated.candidateId;
-    const profileRes = await getCurrentCandidateProfileAction();
-    if (profileRes.success && profileRes.data) {
-      candidateId = profileRes.data.id;
+    if (!candidateId || candidateId === "current" || candidateId === "cand_default_1" || candidateId === "demo_candidate_id") {
+      const profileRes = await getCurrentCandidateProfileAction();
+      if (profileRes.success && profileRes.data) {
+        candidateId = profileRes.data.id;
+      }
     }
     
     // Generate unique Cloudflare R2 storage key

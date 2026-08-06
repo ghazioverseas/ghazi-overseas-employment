@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Eye, Download, Trash2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getPresignedDownloadUrlAction } from "@/actions/document.actions";
+import { getPresignedDownloadUrlAction, getAllDocumentsAction, deleteDocumentAction } from "@/actions/document.actions";
 
 interface DocumentRow {
   id: string;
@@ -21,40 +21,38 @@ interface DocumentRow {
 
 export default function AdminDocumentsPage() {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("");
   const [previewKey, setPreviewKey] = useState<string>("");
   const [previewIsImg, setPreviewIsImg] = useState<boolean>(false);
+  const [docs, setDocs] = useState<DocumentRow[]>([]);
 
-  const [docs, setDocs] = useState<DocumentRow[]>([
-    {
-      id: "doc_101",
-      candidateName: "Muhammad Ali",
-      documentType: "Passport",
-      originalFileName: "Ali_Passport_Verified.pdf",
-      storageKey: "candidates/cand_default_1/passport_sample.pdf",
-      fileSizeMb: 2.4,
-      uploadedAt: new Date().toLocaleDateString(),
-    },
-    {
-      id: "doc_102",
-      candidateName: "Muhammad Ali",
-      documentType: "CNIC",
-      originalFileName: "CNIC_Front_Back.jpg",
-      storageKey: "candidates/cand_default_1/cnic_sample.jpg",
-      fileSizeMb: 1.1,
-      uploadedAt: new Date().toLocaleDateString(),
-    },
-    {
-      id: "doc_103",
-      candidateName: "Tariq Mahmood",
-      documentType: "CV Resume",
-      originalFileName: "Tariq_Resume_Welding.pdf",
-      storageKey: "candidates/cand_default_2/cv_sample.pdf",
-      fileSizeMb: 0.8,
-      uploadedAt: new Date().toLocaleDateString(),
-    },
-  ]);
+  const loadDocuments = async () => {
+    try {
+      const res = await getAllDocumentsAction();
+      if (res.success && res.data) {
+        const mapped: DocumentRow[] = res.data.map((d) => ({
+          id: d.id,
+          candidateName: d.candidateName || "Registered Candidate",
+          documentType: d.documentType.toUpperCase(),
+          originalFileName: d.originalFileName,
+          storageKey: d.storageKey,
+          fileSizeMb: Number(((d.fileSize || 0) / (1024 * 1024)).toFixed(2)),
+          uploadedAt: new Date(d.createdAt).toLocaleDateString(),
+        }));
+        setDocs(mapped);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadDocuments();
+  }, []);
 
   const handlePreview = async (fileName: string, storageKey: string) => {
     try {
@@ -94,9 +92,18 @@ export default function AdminDocumentsPage() {
     }
   };
 
-  const handleDelete = (id: string, fileName: string) => {
-    setDocs(docs.filter((d) => d.id !== id));
-    toast({ title: "Document Purged", description: `${fileName} deleted from Cloudflare R2 bucket and Neon DB.`, variant: "success" });
+  const handleDelete = async (id: string, fileName: string) => {
+    try {
+      const res = await deleteDocumentAction(id);
+      if (res.success) {
+        setDocs((prev) => prev.filter((d) => d.id !== id));
+        toast({ title: "Document Purged", description: `${fileName} deleted successfully from database.`, variant: "success" });
+      } else {
+        toast({ title: "Delete Failed", description: res.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete document.", variant: "destructive" });
+    }
   };
 
   return (
@@ -106,7 +113,12 @@ export default function AdminDocumentsPage() {
         subtitle="Manage all uploaded candidate passports, CNIC cards, resumes, and trade certificates."
       />
 
-      <Card className="border-[#D7E8D8] bg-white shadow-sm overflow-hidden">
+      {loading ? (
+        <Card className="border-[#D7E8D8] bg-white p-12 text-center text-xs font-semibold text-slate-500 animate-pulse">
+          Loading documents vault from Cloudflare R2 & database...
+        </Card>
+      ) : (
+        <Card className="border-[#D7E8D8] bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#F8FAF8] text-slate-700 font-bold border-b border-[#D7E8D8]">
@@ -161,6 +173,7 @@ export default function AdminDocumentsPage() {
           </table>
         </div>
       </Card>
+      )}
 
       <Dialog open={!!previewUrl} onClose={() => setPreviewUrl(null)}>
         <div className="space-y-4 max-w-2xl mx-auto">

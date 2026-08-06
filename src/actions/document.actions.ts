@@ -96,3 +96,25 @@ export async function getPresignedDownloadUrlAction(storageKey: string) {
     return { success: false, error: errMessage };
   }
 }
+
+export async function getAllDocumentsAction() {
+  try {
+    const docs = await DocumentService.getAllDocuments();
+    return { success: true, data: docs };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to fetch documents.";
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function deleteDocumentAction(documentId: string) {
+  try {
+    await DocumentService.deleteDocument(documentId);
+    revalidatePath("/admin/documents");
+    revalidatePath("/candidate/documents");
+    return { success: true, message: "Document deleted successfully." };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to delete document.";
+    return { success: false, error: errMessage };
+  }
+}

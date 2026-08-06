@@ -25,8 +25,35 @@ interface PaymentSettings {
   isSubmissionFeeEnabled: boolean;
 }
 
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+import { getApplicationDetailsAction } from "@/actions/admin.actions";
+import { CandidateStatus, VerificationStatus } from "@/types";
+
+interface CandidateProfileData {
+  id: string;
+  fullName: string;
+  cnic: string;
+  phone: string;
+  whatsapp?: string;
+  profession?: string;
+  city?: string;
+  province?: string;
+  yearsOfExperience?: number;
+  status: CandidateStatus;
+  paymentStatus: VerificationStatus;
+  transactionRef?: string;
+}
+
+interface NoteRecord {
+  id: string;
+  adminName: string;
+  note: string;
+  createdAt: Date | string;
+}
+
 export default function CandidateApplicationPage() {
-  const [submitted] = useState(false);
+  const [candidate, setCandidate] = useState<CandidateProfileData | null>(null);
+  const [adminNotes, setAdminNotes] = useState<NoteRecord[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
     bankName: "Meezan Bank Limited",
     accountTitle: "Ghazi Overseas Employment Pakistan",
@@ -44,18 +71,40 @@ export default function CandidateApplicationPage() {
   });
 
   useEffect(() => {
-    async function loadSettings() {
+    async function loadData() {
       try {
-        const res = await getAdminSettingsAction();
-        if (res.success && res.data) {
-          setPaymentSettings(res.data as PaymentSettings);
+        const [settingsRes, profileRes] = await Promise.all([
+          getAdminSettingsAction(),
+          getCurrentCandidateProfileAction(),
+        ]);
+
+        if (settingsRes.success && settingsRes.data) {
+          setPaymentSettings(settingsRes.data as PaymentSettings);
+        }
+
+        if (profileRes.success && profileRes.data) {
+          const candData = profileRes.data as CandidateProfileData;
+          setCandidate(candData);
+
+          const appDetailsRes = await getApplicationDetailsAction(candData.id);
+          if (appDetailsRes.success && appDetailsRes.data) {
+            const details = appDetailsRes.data as { notes?: NoteRecord[] };
+            if (details.notes) {
+              setAdminNotes(details.notes);
+            }
+          }
         }
       } catch {
         // Fallback
       }
     }
-    loadSettings();
+    loadData();
   }, []);
+
+  const latestAdminNote = adminNotes.length > 0 ? adminNotes[0] : null;
+  const isReturnedForCorrection = candidate?.status === "profile_incomplete";
+  const isMissingDocsRequested = candidate?.status === "documents_pending";
+  const isRejected = candidate?.status === "rejected";
 
   return (
     <div className="space-y-6">
@@ -64,13 +113,40 @@ export default function CandidateApplicationPage() {
         subtitle="Review your registered candidate profile, document checklist, and submission payment instructions."
       />
 
+      {(isReturnedForCorrection || isMissingDocsRequested || isRejected) && (
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 ${
+          isRejected ? "bg-red-50 border-red-200 text-red-900" : "bg-amber-50 border-amber-300 text-amber-900"
+        }`}>
+          <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-xs">
+            <h4 className="font-extrabold text-sm">
+              {isReturnedForCorrection && "Application Returned for Correction"}
+              {isMissingDocsRequested && "Additional / Missing Documents Requested"}
+              {isRejected && "Application Rejected by Administration"}
+            </h4>
+            <p className="font-medium">
+              {latestAdminNote
+                ? `Admin Remarks: "${latestAdminNote.note}"`
+                : "Admin has reviewed your file and requested updates. Please review your profile data and re-upload required documents."}
+            </p>
+            <div className="pt-2 flex gap-2">
+              <Link href="/candidate/documents">
+                <Button size="sm" className="bg-[#167A3D] text-white font-bold h-8 text-xs">
+                  Go to Upload Documents
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card className="border-[#D7E8D8] bg-white shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[#D7E8D8]">
           <div>
             <CardTitle className="text-xl font-extrabold text-slate-900">Application File Summary</CardTitle>
-            <CardDescription className="text-xs mt-1">Ref ID: GHAZI-APP-2026-8912</CardDescription>
+            <CardDescription className="text-xs mt-1">Ref ID: GHAZI-APP-{(candidate?.id || "2026").substring(0, 10).toUpperCase()}</CardDescription>
           </div>
-          <StatusBadge status={submitted ? "awaiting_payment_verification" : "registered"} />
+          <StatusBadge status={candidate?.status || "registered"} />
         </CardHeader>
 
         <CardContent className="space-y-6 pt-6">
@@ -82,27 +158,27 @@ export default function CandidateApplicationPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xl bg-[#F8FAF8] p-4 border border-[#D7E8D8] text-xs">
               <div>
                 <span className="text-slate-500 font-medium">Full Name:</span>
-                <p className="font-bold text-slate-900 mt-0.5">Muhammad Ali</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.fullName || "Registered Candidate"}</p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">CNIC Number:</span>
-                <p className="font-bold text-slate-900 mt-0.5">42101-1234567-1</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.cnic || "N/A"}</p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">Phone & WhatsApp:</span>
-                <p className="font-bold text-slate-900 mt-0.5">03001234567</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.phone || "N/A"}</p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">Profession / Trade:</span>
-                <p className="font-bold text-slate-900 mt-0.5">Electrician Specialist</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.profession || "General Trades"}</p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">City & Province:</span>
-                <p className="font-bold text-slate-900 mt-0.5">Karachi, Sindh</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.city || "Karachi"}, {candidate?.province || "Sindh"}</p>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">Experience:</span>
-                <p className="font-bold text-slate-900 mt-0.5">5 Years</p>
+                <p className="font-bold text-slate-900 mt-0.5">{candidate?.yearsOfExperience || 0} Years</p>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getJobDetailsAction, applyToJobAction } from "@/actions/job.actions";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 
 interface JobDetail {
   id: string;
@@ -109,14 +110,15 @@ export default function JobDetailPage() {
   const handleApply = async () => {
     setApplying(true);
     try {
-      const hasSession = document.cookie.includes("better-auth.session_token");
-      if (!hasSession) {
-        toast({ title: "Authentication Required", description: "Please sign in to submit your job application.", variant: "default" });
+      const profileRes = await getCurrentCandidateProfileAction();
+
+      if (!profileRes.success || !profileRes.data) {
+        toast({ title: "Authentication Required", description: "Please sign in to submit your job application to Ghazi Overseas.", variant: "default" });
         router.push("/login?callbackUrl=/jobs/" + slug);
         return;
       }
 
-      const res = await applyToJobAction("demo_candidate_id", job?.id || "job_sample_1");
+      const res = await applyToJobAction(profileRes.data.id, job?.id || "job_sample_1");
       if (res.success) {
         toast({ title: "Application Submitted!", description: res.message, variant: "success" });
         router.push("/candidate/tracker");

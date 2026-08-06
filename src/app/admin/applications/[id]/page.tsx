@@ -23,6 +23,7 @@ import {
   Download,
 } from "lucide-react";
 import { getApplicationDetailsAction } from "@/actions/admin.actions";
+import { getPresignedDownloadUrlAction } from "@/actions/document.actions";
 import { CandidateStatus, VerificationStatus } from "@/types";
 
 interface DocumentItem {
@@ -296,11 +297,28 @@ export default function AdminApplicationDetailPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs text-[#167A3D]"
-                        onClick={() => setPreviewUrl("https://via.placeholder.com/600x400.png?text=R2+Document+Preview")}
+                        onClick={async () => {
+                          const res = await getPresignedDownloadUrlAction(doc.storageKey);
+                          if (res.success && res.url) {
+                            setPreviewUrl(res.url);
+                          } else {
+                            alert("Document storage key: " + doc.storageKey);
+                          }
+                        }}
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-600">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs text-slate-600"
+                        onClick={async () => {
+                          const res = await getPresignedDownloadUrlAction(doc.storageKey);
+                          if (res.success && res.url) {
+                            window.open(res.url, "_blank");
+                          }
+                        }}
+                      >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                     </div>

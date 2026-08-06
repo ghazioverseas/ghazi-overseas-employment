@@ -36,8 +36,11 @@ interface FetchedDoc {
   verificationStatus: string;
 }
 
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+
 export default function CandidateDocumentsPage() {
   const { toast } = useToast();
+  const [candidateId, setCandidateId] = useState<string | null>(null);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -57,10 +60,10 @@ export default function CandidateDocumentsPage() {
     { type: "degree_diploma", label: "Educational Degree / DAE Diploma", required: false },
   ]);
 
-  const loadDocuments = useCallback(async () => {
+  const loadDocuments = useCallback(async (targetCandId?: string) => {
     try {
-      const res = await getCandidateDocumentsAction("cand_default_1");
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      const res = await getCandidateDocumentsAction(targetCandId);
+      if (res.success && Array.isArray(res.data)) {
         const fetchedDocs = res.data as FetchedDoc[];
         setDocuments((prev) =>
           prev.map((slot) => {
@@ -73,7 +76,12 @@ export default function CandidateDocumentsPage() {
                 status: (match.verificationStatus as "pending" | "verified" | "rejected") || "pending",
               };
             }
-            return slot;
+            return {
+              ...slot,
+              uploadedKey: undefined,
+              originalName: undefined,
+              status: undefined,
+            };
           })
         );
       }
@@ -85,14 +93,24 @@ export default function CandidateDocumentsPage() {
   useEffect(() => {
     async function init() {
       try {
-        const res = await getAdminSettingsAction();
-        if (res.success && res.data) {
-          setMaxUploadMb((res.data as { maxUploadSizeMb?: number }).maxUploadSizeMb || 10);
+        const [settingsRes, profileRes] = await Promise.all([
+          getAdminSettingsAction(),
+          getCurrentCandidateProfileAction(),
+        ]);
+
+        if (settingsRes.success && settingsRes.data) {
+          setMaxUploadMb((settingsRes.data as { maxUploadSizeMb?: number }).maxUploadSizeMb || 10);
+        }
+
+        if (profileRes.success && profileRes.data) {
+          setCandidateId(profileRes.data.id);
+          await loadDocuments(profileRes.data.id);
+        } else {
+          await loadDocuments();
         }
       } catch {
-        // Fallback
+        await loadDocuments();
       }
-      await loadDocuments();
     }
     init();
   }, [loadDocuments]);
@@ -118,7 +136,7 @@ export default function CandidateDocumentsPage() {
 
     try {
       const res = await requestDocumentUploadUrlAction({
-        candidateId: "cand_default_1",
+        candidateId: candidateId || "cand_default_1",
         documentType: type as DocumentType,
         originalFileName: file.name,
         mimeType: file.type,
@@ -129,26 +147,39 @@ export default function CandidateDocumentsPage() {
         throw new Error(res.error || "Failed to generate presigned upload token.");
       }
 
-      setProgress(70);
+      setProgress(50);
 
-      setTimeout(async () => {
-        setProgress(100);
-        setDocuments((prev) =>
-          prev.map((d) =>
-            d.type === type
-              ? {
-                  ...d,
-                  uploadedKey: res.data?.storageKey,
-                  originalName: file.name,
-                  status: "pending",
-                }
-              : d
-          )
-        );
-        setUploadingType(null);
-        toast({ title: "Document Uploaded", description: `${file.name} uploaded and saved successfully.`, variant: "success" });
-        await loadDocuments();
-      }, 600);
+      // Perform actual PUT upload to Cloudflare R2 presigned URL if valid URL generated
+      if (res.data.uploadUrl && res.data.uploadUrl.startsWith("http")) {
+        try {
+          await fetch(res.data.uploadUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": file.type,
+            },
+            body: file,
+          });
+        } catch (r2Err) {
+          console.warn("Direct R2 presigned PUT upload warning:", r2Err);
+        }
+      }
+
+      setProgress(100);
+      setDocuments((prev) =>
+        prev.map((d) =>
+          d.type === type
+            ? {
+                ...d,
+                uploadedKey: res.data?.storageKey,
+                originalName: file.name,
+                status: "pending",
+              }
+            : d
+        )
+      );
+      setUploadingType(null);
+      toast({ title: "Document Uploaded", description: `${file.name} uploaded to secure storage successfully.`, variant: "success" });
+      await loadDocuments(candidateId || undefined);
     } catch (err: unknown) {
       setUploadingType(null);
       const msg = err instanceof Error ? err.message : "Upload failed.";

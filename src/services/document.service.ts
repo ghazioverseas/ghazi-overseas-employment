@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { documents } from "@/db/schema/documents";
 import { candidates } from "@/db/schema/candidates";
-import { users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { DocumentType } from "@/types";
@@ -9,7 +8,9 @@ import { DocumentType } from "@/types";
 export class DocumentService {
   private static async ensureValidCandidateId(targetCandidateId: string): Promise<string> {
     try {
-      // 1. Check if candidate record exists
+      if (!targetCandidateId) return "";
+
+      // 1. Check if candidate record exists by candidate ID
       const existing = await db
         .select()
         .from(candidates)
@@ -20,40 +21,18 @@ export class DocumentService {
         return existing[0].id;
       }
 
-      // 2. Check if any candidate exists in database
-      const anyCandidate = await db.select().from(candidates).limit(1);
-      if (anyCandidate.length > 0) {
-        return anyCandidate[0].id;
+      // 2. Check if targetCandidateId is a user ID
+      const existingByUser = await db
+        .select()
+        .from(candidates)
+        .where(eq(candidates.userId, targetCandidateId))
+        .limit(1);
+
+      if (existingByUser.length > 0) {
+        return existingByUser[0].id;
       }
 
-      // 3. Create default candidate record if none exists
-      const defaultUserId = "default_candidate_user_id";
-      await db
-        .insert(users)
-        .values({
-          id: defaultUserId,
-          name: "Registered Candidate",
-          email: "candidate@ghazioverseas.com",
-          role: "candidate",
-        })
-        .onConflictDoNothing();
-
-      const newCandId = targetCandidateId.includes("demo") ? "cand_default_1" : targetCandidateId;
-
-      await db
-        .insert(candidates)
-        .values({
-          id: newCandId,
-          userId: defaultUserId,
-          fullName: "Registered Candidate",
-          cnic: "42101-1234567-9",
-          phone: "03001234567",
-          status: "registered",
-          paymentStatus: "pending_payment",
-        })
-        .onConflictDoNothing();
-
-      return newCandId;
+      return targetCandidateId;
     } catch {
       return targetCandidateId;
     }
@@ -61,7 +40,10 @@ export class DocumentService {
 
   static async getDocumentsByCandidateId(candidateId: string) {
     try {
+      if (!candidateId) return [];
       const validId = await this.ensureValidCandidateId(candidateId);
+      if (!validId) return [];
+
       return await db
         .select()
         .from(documents)

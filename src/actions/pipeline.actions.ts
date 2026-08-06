@@ -87,9 +87,23 @@ export async function issueFlightTicketAction(data: {
   }
 }
 
-export async function getCandidatePipelineAction(candidateId: string) {
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+
+export async function getCandidatePipelineAction(candidateId?: string) {
   try {
-    const pipelineData = await PipelineService.getCandidatePipelineDetails(candidateId);
+    let targetId = candidateId;
+    if (!targetId || targetId === "demo_candidate_id" || targetId === "cand_default_1") {
+      const profileRes = await getCurrentCandidateProfileAction();
+      if (profileRes.success && profileRes.data) {
+        targetId = profileRes.data.id;
+      }
+    }
+
+    if (!targetId) {
+      return { success: true, data: null };
+    }
+
+    const pipelineData = await PipelineService.getCandidatePipelineDetails(targetId);
     return { success: true, data: pipelineData };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to fetch candidate pipeline.";

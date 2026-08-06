@@ -47,40 +47,22 @@ interface PipelineState {
 
 export default function CandidateTrackerPage() {
   const [pipelineData, setPipelineData] = useState<PipelineState>({
-    stage: "documents_verified",
-    interview: {
-      interviewDate: "2026-08-20",
-      interviewTime: "10:30 AM",
-      mode: "office",
-      location: "Ghazi Overseas Head Office, Karachi",
-      status: "scheduled",
-    },
-    medical: {
-      status: "passed",
-      medicalCenter: "GAMCA Approved Medical Center, Karachi",
-    },
-    visa: {
-      status: "approved",
-      visaNumber: "V-882299",
-    },
-    ticket: {
-      airline: "Saudi Arabian Airlines",
-      flightNumber: "SV-731",
-      departureDate: "2026-09-01",
-      pnr: "PNR-GHAZI-99",
-      seat: "14B",
-    },
+    stage: "applied",
+    interview: null,
+    medical: null,
+    visa: null,
+    ticket: null,
   });
 
   useEffect(() => {
     async function loadPipeline() {
       try {
-        const res = await getCandidatePipelineAction("demo_candidate_id");
+        const res = await getCandidatePipelineAction();
         if (res.success && res.data) {
           setPipelineData(res.data as PipelineState);
         }
       } catch {
-        // Fallback demo state
+        // Fallback
       }
     }
     loadPipeline();

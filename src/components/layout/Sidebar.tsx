@@ -51,7 +51,15 @@ export function Sidebar() {
   }, []);
 
   const handleLogout = async () => {
+    setProfile(null);
     await logoutAction();
+    if (typeof document !== "undefined") {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+      });
+    }
     window.location.href = "/login";
   };
 

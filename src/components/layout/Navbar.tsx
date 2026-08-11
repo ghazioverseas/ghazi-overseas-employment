@@ -35,8 +35,15 @@ export function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await logoutAction();
     setUser(null);
+    await logoutAction();
+    if (typeof document !== "undefined") {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+      });
+    }
     window.location.href = "/login";
   };
 

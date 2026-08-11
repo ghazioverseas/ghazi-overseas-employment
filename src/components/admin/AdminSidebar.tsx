@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
+import { logoutAction } from "@/actions/auth.actions";
 
 const adminNavItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -42,6 +43,18 @@ const adminNavItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    await logoutAction();
+    if (typeof document !== "undefined") {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+      });
+    }
+    window.location.href = "/admin/login";
+  };
 
   return (
     <aside className="w-64 shrink-0 border-r border-[#D7E8D8] bg-white min-h-[calc(100vh-80px)] flex flex-col p-4">
@@ -75,13 +88,13 @@ export function AdminSidebar() {
       </nav>
 
       <div className="pt-4 border-t border-[#D7E8D8]">
-        <Link
-          href="/login"
-          className="flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
         >
           <LogOut className="h-4 w-4 text-red-600" />
           <span>Admin Sign Out</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );

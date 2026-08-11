@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { candidateRegisterSchema, loginSchema, forgotPasswordSchema } from "@/validators/auth.schema";
 import { auth } from "@/lib/auth/auth";
 import { db } from "@/lib/db";
-import { users } from "@/db/schema/users";
+import { users, sessions } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 import { CandidateService } from "@/services/candidate.service";
 import { getSessionFromRequest } from "@/lib/auth/get-session";
@@ -230,9 +230,60 @@ export async function forgotPasswordAction(formData: unknown) {
 export async function logoutAction() {
   try {
     const cookieStore = await cookies();
-    cookieStore.delete("better-auth.session_token");
-    cookieStore.delete("__Secure-better-auth.session_token");
-    logger.info("auth", "User logged out successfully");
+    const reqHeaders = await headers();
+
+    // 1. Extract session token from all cookie variants
+    const token =
+      cookieStore.get("better-auth.session_token")?.value ||
+      cookieStore.get("__Secure-better-auth.session_token")?.value ||
+      cookieStore.get("better-auth.session")?.value;
+
+    // 2. Delete session record directly from PostgreSQL DB to ensure it can never be reused
+    if (token) {
+      try {
+        await db.delete(sessions).where(eq(sessions.token, token));
+      } catch (dbErr) {
+        logger.error("auth", "Database session deletion error", { error: String(dbErr) });
+      }
+    }
+
+    // 3. Call Better-Auth API sign out to trigger framework signout logic
+    try {
+      await auth.api.signOut({
+        headers: reqHeaders,
+      });
+    } catch {
+      // Ignore if auth.api.signOut fails or throws
+    }
+
+    // 4. Expire ALL candidate & auth cookie variations with explicit path, maxAge: 0, expires
+    const cookieNames = [
+      "better-auth.session_token",
+      "__Secure-better-auth.session_token",
+      "better-auth.session",
+      "__Secure-better-auth.session",
+      "better-auth.session_data",
+      "__Secure-better-auth.session_data",
+      "better-auth.dont_remember",
+    ];
+
+    for (const name of cookieNames) {
+      try {
+        cookieStore.delete(name);
+      } catch {}
+      try {
+        cookieStore.set(name, "", {
+          path: "/",
+          maxAge: 0,
+          expires: new Date(0),
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        });
+      } catch {}
+    }
+
+    logger.info("auth", "User logged out successfully and session destroyed");
     return { success: true, message: "Logged out successfully." };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Logout failed.";

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 import { CandidateService } from "@/services/candidate.service";
+import { getSessionFromRequest } from "@/lib/auth/get-session";
 import { logger } from "@/lib/logger";
 
 export async function registerCandidateAction(formData: unknown) {
@@ -242,10 +243,7 @@ export async function logoutAction() {
 
 export async function getAuthSessionAction() {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
+    const session = await getSessionFromRequest();
 
     if (!session || !session.user) {
       return { success: false, user: null };

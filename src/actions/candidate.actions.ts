@@ -1,16 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth/auth";
+import { getSessionFromRequest } from "@/lib/auth/get-session";
 import { CandidateService } from "@/services/candidate.service";
 import { logger } from "@/lib/logger";
 
 export async function getCurrentCandidateProfileAction() {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
+    const session = await getSessionFromRequest();
 
     if (!session || !session.user) {
       return { success: false, error: "Unauthorized: Candidate session invalid." };
@@ -62,10 +58,7 @@ export async function updateCandidateProfileAction(formData: {
   education?: string;
 }) {
   try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
+    const session = await getSessionFromRequest();
 
     if (!session || !session.user) {
       return { success: false, error: "Unauthorized: Candidate session invalid." };

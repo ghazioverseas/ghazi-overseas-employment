@@ -1,40 +1,124 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save } from "lucide-react";
+import { Save, Loader2, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentCandidateProfileAction, updateCandidateProfileAction } from "@/actions/candidate.actions";
 
 export default function CandidateProfilePage() {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    fullName: "Muhammad Ali",
-    fatherName: "Tariq Ali",
-    cnic: "42101-1234567-1",
-    passportNumber: "AB9988771",
-    phone: "03001234567",
-    whatsapp: "03001234567",
-    email: "candidate@example.com",
-    city: "Karachi",
-    province: "Sindh",
-    profession: "Electrician Specialist",
-    education: "DAE Electrical Diploma",
+    fullName: "",
+    fatherName: "",
+    cnic: "",
+    passportNumber: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
+    city: "",
+    province: "",
+    profession: "",
+    education: "",
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    async function fetchProfile() {
+      setFetching(true);
+      try {
+        const res = await getCurrentCandidateProfileAction();
+        if (res.success && res.data) {
+          const cand = res.data;
+          setFormData({
+            fullName: cand.fullName || "",
+            fatherName: cand.fatherName || "",
+            cnic: cand.cnic || "",
+            passportNumber: cand.passportNumber || "",
+            phone: cand.phone || "",
+            whatsapp: cand.whatsapp || "",
+            email: cand.email || "",
+            city: cand.city || "",
+            province: cand.province || "",
+            profession: cand.profession || "",
+            education: cand.education || "",
+          });
+        } else {
+          toast({
+            title: "Profile Error",
+            description: res.error || "Failed to load candidate profile details.",
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: "Profile Error",
+          description: "An unexpected error occurred while loading profile.",
+          variant: "destructive",
+        });
+      } finally {
+        setFetching(false);
+      }
+    }
+
+    fetchProfile();
+  }, [toast]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast({ title: "Profile Updated", description: "Candidate profile details saved successfully.", variant: "success" });
-    }, 600);
+    setSaving(true);
+    try {
+      const res = await updateCandidateProfileAction({
+        fullName: formData.fullName,
+        fatherName: formData.fatherName,
+        cnic: formData.cnic,
+        passportNumber: formData.passportNumber,
+        phone: formData.phone,
+        whatsapp: formData.whatsapp,
+        city: formData.city,
+        province: formData.province,
+        profession: formData.profession,
+        education: formData.education,
+      });
+
+      if (res.success) {
+        toast({
+          title: "Profile Updated",
+          description: "Your candidate profile information has been saved successfully.",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Update Failed",
+          description: res.error || "Could not save profile changes.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Update Failed",
+        description: "An error occurred while saving candidate profile.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (fetching) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-[#167A3D]" />
+        <p className="text-sm font-semibold text-slate-600">Loading your candidate profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -45,10 +129,20 @@ export default function CandidateProfilePage() {
 
       <Card className="border-[#D7E8D8] bg-white shadow-sm">
         <CardHeader>
-          <CardTitle className="text-[#167A3D] text-lg font-bold">Personal & Professional Details</CardTitle>
-          <CardDescription className="text-xs">
-            Verify that all credentials match your official CNIC and Passport.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-[#167A3D] text-lg font-bold">Personal & Professional Details</CardTitle>
+              <CardDescription className="text-xs">
+                Verify that all credentials match your official CNIC and Passport.
+              </CardDescription>
+            </div>
+            {formData.email && (
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-[#167A3D] border border-emerald-200">
+                <UserCheck className="h-3.5 w-3.5" />
+                <span>{formData.email}</span>
+              </div>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -60,6 +154,7 @@ export default function CandidateProfilePage() {
                   id="fullName"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  placeholder="Enter full name"
                 />
               </div>
 
@@ -69,12 +164,23 @@ export default function CandidateProfilePage() {
                   id="fatherName"
                   value={formData.fatherName}
                   onChange={(e) => setFormData({ ...formData, fatherName: e.target.value })}
+                  placeholder="Enter father's name"
                 />
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="email">Registered Email (Logged In Account)</Label>
+                <Input id="email" value={formData.email} readOnly className="bg-slate-100 font-medium text-slate-700 cursor-not-allowed" />
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="cnic">CNIC Number</Label>
-                <Input id="cnic" value={formData.cnic} readOnly className="bg-slate-100" />
+                <Input
+                  id="cnic"
+                  value={formData.cnic}
+                  onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+                  placeholder="12345-1234567-1"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -83,6 +189,7 @@ export default function CandidateProfilePage() {
                   id="passportNumber"
                   value={formData.passportNumber}
                   onChange={(e) => setFormData({ ...formData, passportNumber: e.target.value })}
+                  placeholder="Passport number"
                 />
               </div>
 
@@ -92,6 +199,7 @@ export default function CandidateProfilePage() {
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="03001234567"
                 />
               </div>
 
@@ -101,6 +209,17 @@ export default function CandidateProfilePage() {
                   id="whatsapp"
                   value={formData.whatsapp}
                   onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                  placeholder="03001234567"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="e.g. Karachi"
                 />
               </div>
 
@@ -110,6 +229,7 @@ export default function CandidateProfilePage() {
                   id="profession"
                   value={formData.profession}
                   onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                  placeholder="e.g. Electrician / Welder / Driver"
                 />
               </div>
 
@@ -119,16 +239,18 @@ export default function CandidateProfilePage() {
                   id="education"
                   value={formData.education}
                   onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+                  placeholder="e.g. DAE / Matric / Intermediate"
                 />
               </div>
             </div>
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={saving}
               className="bg-[#167A3D] hover:bg-[#0E5D2E] text-white font-bold gap-2 rounded-xl mt-4"
             >
-              {loading ? "Saving Changes..." : "Save Profile Details"} <Save className="h-4 w-4" />
+              {saving ? "Saving Changes..." : "Save Profile Details"}{" "}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             </Button>
           </form>
         </CardContent>

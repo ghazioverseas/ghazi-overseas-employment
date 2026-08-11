@@ -30,10 +30,60 @@ export async function getCurrentCandidateProfileAction() {
       });
     }
 
-    return { success: true, data: candidate };
+    return {
+      success: true,
+      data: {
+        ...candidate,
+        email: session.user.email,
+      },
+    };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to fetch candidate profile.";
     logger.error("auth", "getCurrentCandidateProfileAction error", { error: errMessage });
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function updateCandidateProfileAction(formData: {
+  fullName?: string;
+  fatherName?: string;
+  cnic?: string;
+  passportNumber?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
+  whatsapp?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  profession?: string;
+  yearsOfExperience?: number;
+  education?: string;
+}) {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({
+      headers: reqHeaders,
+    });
+
+    if (!session || !session.user) {
+      return { success: false, error: "Unauthorized: Candidate session invalid." };
+    }
+
+    const userId = session.user.id;
+    const updated = await CandidateService.updateCandidateProfileByUserId(userId, formData);
+    return {
+      success: true,
+      data: {
+        ...updated,
+        email: session.user.email,
+      },
+      message: "Profile updated successfully.",
+    };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to update profile.";
+    logger.error("auth", "updateCandidateProfileAction error", { error: errMessage });
     return { success: false, error: errMessage };
   }
 }

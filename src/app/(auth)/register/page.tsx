@@ -1,22 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { candidateRegisterSchema, CandidateRegisterInput } from "@/validators/auth.schema";
-import { registerCandidateAction } from "@/actions/auth.actions";
+import { registerCandidateAction, getAuthSessionAction } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { UserPlus, AlertCircle } from "lucide-react";
+import { UserPlus, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -32,6 +35,27 @@ export default function RegisterPage() {
       yearsOfExperience: 2,
     },
   });
+
+  // If already logged in, redirect to appropriate dashboard
+  useEffect(() => {
+    async function checkExistingSession() {
+      try {
+        const res = await getAuthSessionAction();
+        if (res.success && res.user) {
+          if (res.user.role === "admin") {
+            router.replace("/admin/dashboard");
+          } else {
+            router.replace("/candidate/dashboard");
+          }
+          return;
+        }
+      } catch {
+        // Not logged in — show register form
+      }
+      setCheckingSession(false);
+    }
+    checkExistingSession();
+  }, [router]);
 
   const onSubmit = async (data: CandidateRegisterInput) => {
     setLoading(true);
@@ -52,6 +76,14 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-[calc(100vh-160px)] items-center justify-center bg-[#F8FAF8]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-160px)] items-center justify-center p-4 py-12 bg-[#F8FAF8]">

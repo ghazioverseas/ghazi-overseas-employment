@@ -1,21 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/validators/auth.schema";
-import { adminLoginAction } from "@/actions/auth.actions";
+import { adminLoginAction, getAuthSessionAction } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Eye, EyeOff, AlertCircle, Lock } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, AlertCircle, Lock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
@@ -27,6 +30,28 @@ export default function AdminLoginPage() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
+
+  // If already logged in as admin, redirect to admin dashboard
+  useEffect(() => {
+    async function checkExistingSession() {
+      try {
+        const res = await getAuthSessionAction();
+        if (res.success && res.user) {
+          if (res.user.role === "admin") {
+            router.replace("/admin/dashboard");
+          } else {
+            // Candidate user trying to access admin login — send them to candidate dashboard
+            router.replace("/candidate/dashboard");
+          }
+          return;
+        }
+      } catch {
+        // Not logged in — show admin login form
+      }
+      setCheckingSession(false);
+    }
+    checkExistingSession();
+  }, [router]);
 
   const onSubmit = async (data: LoginInput) => {
     setLoading(true);
@@ -47,6 +72,15 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAF8]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-[#F8FAF8]">

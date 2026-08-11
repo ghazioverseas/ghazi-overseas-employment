@@ -1,21 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/validators/auth.schema";
-import { loginAction } from "@/actions/auth.actions";
+import { loginAction, getAuthSessionAction } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { LogIn, AlertCircle } from "lucide-react";
+import { LogIn, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -26,6 +29,27 @@ export default function LoginPage() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
+
+  // If already logged in, redirect to appropriate dashboard
+  useEffect(() => {
+    async function checkExistingSession() {
+      try {
+        const res = await getAuthSessionAction();
+        if (res.success && res.user) {
+          if (res.user.role === "admin") {
+            router.replace("/admin/dashboard");
+          } else {
+            router.replace("/candidate/dashboard");
+          }
+          return;
+        }
+      } catch {
+        // Not logged in — show login form
+      }
+      setCheckingSession(false);
+    }
+    checkExistingSession();
+  }, [router]);
 
   const onSubmit = async (data: LoginInput) => {
     setLoading(true);
@@ -45,6 +69,14 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-[calc(100vh-160px)] items-center justify-center bg-[#F8FAF8]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-160px)] items-center justify-center p-4 py-12 bg-[#F8FAF8]">

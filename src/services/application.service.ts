@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { candidates } from "@/db/schema/candidates";
 import { documents } from "@/db/schema/documents";
 import { applicationNotes } from "@/db/schema/notes";
-import { eq, desc } from "drizzle-orm";
+import { eq, or, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { LogService } from "@/services/log.service";
 import { CandidateStatus, VerificationStatus } from "@/types";
@@ -10,15 +10,37 @@ import { CandidateStatus, VerificationStatus } from "@/types";
 export class ApplicationService {
   static async getApplicationDetails(candidateId: string) {
     try {
-      const candidateList = await db.select().from(candidates).where(eq(candidates.id, candidateId)).limit(1);
+      const candidateList = await db
+        .select()
+        .from(candidates)
+        .where(or(eq(candidates.id, candidateId), eq(candidates.userId, candidateId)))
+        .limit(1);
+
       if (candidateList.length === 0) return null;
 
       const candidate = candidateList[0];
-      const docList = await db.select().from(documents).where(eq(documents.candidateId, candidateId));
+      const docList = await db
+        .select()
+        .from(documents)
+        .where(
+          or(
+            eq(documents.candidateId, candidate.id),
+            eq(documents.candidateId, candidate.userId ?? ""),
+            eq(documents.candidateId, candidateId)
+          )
+        )
+        .orderBy(desc(documents.createdAt));
+
       const notesList = await db
         .select()
         .from(applicationNotes)
-        .where(eq(applicationNotes.candidateId, candidateId))
+        .where(
+          or(
+            eq(applicationNotes.candidateId, candidate.id),
+            eq(applicationNotes.candidateId, candidate.userId ?? ""),
+            eq(applicationNotes.candidateId, candidateId)
+          )
+        )
         .orderBy(desc(applicationNotes.createdAt));
 
       return {

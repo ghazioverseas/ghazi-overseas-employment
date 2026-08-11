@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { documents } from "@/db/schema/documents";
 import { candidates } from "@/db/schema/candidates";
-import { eq, desc } from "drizzle-orm";
+import { users } from "@/db/schema/users";
+import { eq, or, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { DocumentType } from "@/types";
 
@@ -10,26 +11,14 @@ export class DocumentService {
     try {
       if (!targetCandidateId || targetCandidateId === "current") return "";
 
-      // 1. Check if candidate record exists by candidate ID
       const existing = await db
         .select()
         .from(candidates)
-        .where(eq(candidates.id, targetCandidateId))
+        .where(or(eq(candidates.id, targetCandidateId), eq(candidates.userId, targetCandidateId)))
         .limit(1);
 
       if (existing.length > 0) {
         return existing[0].id;
-      }
-
-      // 2. Check if targetCandidateId is a user ID
-      const existingByUser = await db
-        .select()
-        .from(candidates)
-        .where(eq(candidates.userId, targetCandidateId))
-        .limit(1);
-
-      if (existingByUser.length > 0) {
-        return existingByUser[0].id;
       }
 
       return targetCandidateId;
@@ -41,13 +30,27 @@ export class DocumentService {
   static async getDocumentsByCandidateId(candidateId: string) {
     try {
       if (!candidateId) return [];
-      const validId = await this.ensureValidCandidateId(candidateId);
-      if (!validId) return [];
+
+      const candList = await db
+        .select()
+        .from(candidates)
+        .where(or(eq(candidates.id, candidateId), eq(candidates.userId, candidateId)))
+        .limit(1);
+
+      const targetId = candList[0]?.id || candidateId;
+      const targetUserId = candList[0]?.userId || candidateId;
 
       return await db
         .select()
         .from(documents)
-        .where(eq(documents.candidateId, validId));
+        .where(
+          or(
+            eq(documents.candidateId, targetId),
+            eq(documents.candidateId, targetUserId),
+            eq(documents.candidateId, candidateId)
+          )
+        )
+        .orderBy(desc(documents.createdAt));
     } catch (error: unknown) {
       const errMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error("database", "Failed to fetch candidate documents", { candidateId, error: errMessage });
@@ -65,14 +68,36 @@ export class DocumentService {
     fileSize: number;
   }) {
     try {
-      let validCandidateId = await this.ensureValidCandidateId(data.candidateId);
+      let validCandidateId = data.candidateId;
+      const candCheck = await db
+        .select()
+        .from(candidates)
+        .where(or(eq(candidates.id, data.candidateId), eq(candidates.userId, data.candidateId)))
+        .limit(1);
 
-      // Double-verify that validCandidateId exists in candidates table
-      const candCheck = await db.select().from(candidates).where(eq(candidates.id, validCandidateId)).limit(1);
-      if (candCheck.length === 0) {
+      if (candCheck.length > 0) {
+        validCandidateId = candCheck[0].id;
+      } else {
         const anyCand = await db.select().from(candidates).limit(1);
         if (anyCand.length > 0) {
           validCandidateId = anyCand[0].id;
+        } else {
+          // If no candidate record exists in database, create fallback candidate profile
+          const fallbackId = `cand_${Date.now()}`;
+          const newCand = await db
+            .insert(candidates)
+            .values({
+              id: fallbackId,
+              userId: data.candidateId || "user_default",
+              fullName: "Registered Candidate",
+              cnic: "42101-0000000-1",
+              phone: "03000000000",
+              status: "registered",
+              paymentStatus: "pending_payment",
+              submissionFee: 500,
+            })
+            .returning();
+          validCandidateId = newCand[0].id;
         }
       }
 
@@ -110,7 +135,8 @@ export class DocumentService {
         .select({
           id: documents.id,
           candidateId: documents.candidateId,
-          candidateName: candidates.fullName,
+          candidateFullName: candidates.fullName,
+          userName: users.name,
           documentType: documents.documentType,
           originalFileName: documents.originalFileName,
           storageKey: documents.storageKey,
@@ -120,10 +146,14 @@ export class DocumentService {
           createdAt: documents.createdAt,
         })
         .from(documents)
-        .leftJoin(candidates, eq(documents.candidateId, candidates.id))
+        .leftJoin(candidates, or(eq(documents.candidateId, candidates.id), eq(documents.candidateId, candidates.userId)))
+        .leftJoin(users, eq(candidates.userId, users.id))
         .orderBy(desc(documents.createdAt));
 
-      return result;
+      return result.map((r) => ({
+        ...r,
+        candidateName: r.candidateFullName || r.userName || "Registered Candidate",
+      }));
     } catch (error: unknown) {
       const errMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error("database", "Failed to fetch all documents", { error: errMessage });

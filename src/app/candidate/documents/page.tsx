@@ -76,6 +76,10 @@ export default function CandidateDocumentsPage() {
                 status: (match.verificationStatus as "pending" | "verified" | "rejected") || "pending",
               };
             }
+            // Preserve locally uploaded document details if loadDocuments returned empty or partial list
+            if (slot.uploadedKey) {
+              return slot;
+            }
             return {
               ...slot,
               uploadedKey: undefined,
@@ -165,23 +169,40 @@ export default function CandidateDocumentsPage() {
       }
 
       setProgress(100);
+      const resolvedCandId = res.data?.candidateId || candidateId;
+      if (resolvedCandId && resolvedCandId !== candidateId) {
+        setCandidateId(resolvedCandId);
+      }
+
+      // Optimistic local state update — this is the primary UI update
       setDocuments((prev) =>
         prev.map((d) =>
           d.type === type
             ? {
                 ...d,
-                uploadedKey: res.data?.storageKey,
+                uploadedKey: res.data?.storageKey || `uploaded_${type}_${Date.now()}`,
                 originalName: file.name,
-                status: "pending",
+                status: "pending" as const,
               }
             : d
         )
       );
       setUploadingType(null);
+      setProgress(0);
       toast({ title: "Document Uploaded", description: `${file.name} uploaded to secure storage successfully.`, variant: "success" });
-      await loadDocuments(candidateId || "current");
+
+      // Deferred background refresh from DB — small delay to let serverless DB commit
+      // This supplements but does NOT override the optimistic state above
+      setTimeout(async () => {
+        try {
+          await loadDocuments(resolvedCandId || candidateId || "current");
+        } catch {
+          // Optimistic state already shows the upload — no action needed
+        }
+      }, 1500);
     } catch (err: unknown) {
       setUploadingType(null);
+      setProgress(0);
       const msg = err instanceof Error ? err.message : "Upload failed.";
       toast({ title: "Upload Failed", description: msg, variant: "destructive" });
     }

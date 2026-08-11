@@ -1,21 +1,68 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { FileText, Upload, CreditCard, ArrowRight, ShieldCheck, Clock } from "lucide-react";
+import { FileText, Upload, CreditCard, ArrowRight, ShieldCheck, Clock, UserCheck } from "lucide-react";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+import { getCandidateDocumentsAction } from "@/actions/document.actions";
+import { CandidateStatus, VerificationStatus } from "@/types";
+
+interface CandidateInfo {
+  id: string;
+  fullName: string;
+  email: string;
+  cnic: string;
+  status: CandidateStatus;
+  paymentStatus: VerificationStatus;
+}
 
 export default function CandidateDashboardPage() {
+  const [candidate, setCandidate] = useState<CandidateInfo | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [profileRes, docsRes] = await Promise.all([
+          getCurrentCandidateProfileAction(),
+          getCandidateDocumentsAction(),
+        ]);
+
+        if (profileRes.success && profileRes.data) {
+          setCandidate(profileRes.data as CandidateInfo);
+        }
+
+        if (docsRes.success && Array.isArray(docsRes.data)) {
+          setUploadedCount(docsRes.data.length);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    loadData();
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Header Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-[#167A3D] to-[#0E5D2E] p-6 text-white shadow-lg">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-black">Welcome to Candidate Portal</h1>
-            <p className="text-sm text-emerald-100 mt-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black">
+                {candidate?.fullName ? `Welcome back, ${candidate.fullName}` : "Welcome to Candidate Portal"}
+              </h1>
+            </div>
+            {candidate?.email && (
+              <p className="text-xs text-emerald-200 mt-0.5 flex items-center gap-1 font-semibold">
+                <UserCheck className="h-3.5 w-3.5" /> Account: {candidate.email} {candidate.cnic ? `| CNIC: ${candidate.cnic}` : ""}
+              </p>
+            )}
+            <p className="text-xs text-emerald-100/90 mt-1">
               Ghazi Overseas Employment Pakistan (O.E.P LIC No. 2636/KARACHI)
             </p>
           </div>
@@ -37,7 +84,7 @@ export default function CandidateDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-2xl font-black text-slate-900">
-              <StatusBadge status="registered" />
+              <StatusBadge status={candidate?.status || "registered"} />
             </div>
             <p className="text-xs text-slate-500">
               Your candidate profile registration is complete. Upload documents to submit.
@@ -53,7 +100,7 @@ export default function CandidateDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-2xl font-black text-[#167A3D]">
-              0 / 4 <span className="text-xs font-normal text-slate-500">Required</span>
+              {uploadedCount} / 4 <span className="text-xs font-normal text-slate-500">Required</span>
             </div>
             <p className="text-xs text-slate-500">
               Passport, CNIC, CV, and Trade Photo required for submission.
@@ -69,7 +116,7 @@ export default function CandidateDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-2xl font-black text-slate-900">
-              <StatusBadge status="pending_payment" />
+              <StatusBadge status={candidate?.paymentStatus || "pending_payment"} />
             </div>
             <p className="text-xs text-slate-500">
               Submission Fee: Rs. 500 (Payable via Bank Transfer, EasyPaisa, or JazzCash).

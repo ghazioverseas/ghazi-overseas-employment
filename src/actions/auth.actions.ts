@@ -225,3 +225,47 @@ export async function forgotPasswordAction(formData: unknown) {
     return { success: false, error: errMessage };
   }
 }
+
+export async function logoutAction() {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete("better-auth.session_token");
+    cookieStore.delete("__Secure-better-auth.session_token");
+    logger.info("auth", "User logged out successfully");
+    return { success: true, message: "Logged out successfully." };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Logout failed.";
+    logger.error("auth", "Logout error", { error: errMessage });
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function getAuthSessionAction() {
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({
+      headers: reqHeaders,
+    });
+
+    if (!session || !session.user) {
+      return { success: false, user: null };
+    }
+
+    const userRecords = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const role = userRecords[0]?.role || (session.user as { role?: string }).role || "candidate";
+
+    return {
+      success: true,
+      user: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        role,
+      },
+    };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to fetch auth session.";
+    logger.error("auth", "getAuthSessionAction error", { error: errMessage });
+    return { success: false, user: null };
+  }
+}

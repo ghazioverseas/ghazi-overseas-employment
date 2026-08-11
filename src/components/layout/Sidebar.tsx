@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,9 +12,12 @@ import {
   Activity,
   Briefcase,
   LogOut,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
+import { logoutAction } from "@/actions/auth.actions";
 
 const navItems = [
   { name: "Dashboard", href: "/candidate/dashboard", icon: LayoutDashboard },
@@ -28,6 +31,29 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [profile, setProfile] = useState<{ fullName?: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await getCurrentCandidateProfileAction();
+        if (res.success && res.data) {
+          setProfile({
+            fullName: res.data.fullName,
+            email: res.data.email,
+          });
+        }
+      } catch {
+        setProfile(null);
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutAction();
+    window.location.href = "/login";
+  };
 
   return (
     <aside className="w-64 shrink-0 border-r border-[#D7E8D8] bg-white min-h-[calc(100vh-80px)] flex flex-col p-4">
@@ -57,14 +83,26 @@ export function Sidebar() {
         })}
       </nav>
 
+      {profile && (
+        <div className="mb-4 rounded-xl bg-emerald-50/80 p-3 border border-emerald-200">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#167A3D]">
+            <UserCheck className="h-4 w-4 shrink-0" />
+            <div className="truncate">
+              <p className="truncate text-slate-900">{profile.fullName || "Candidate User"}</p>
+              <p className="truncate text-[11px] font-normal text-slate-600">{profile.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="pt-4 border-t border-[#D7E8D8]">
-        <Link
-          href="/login"
-          className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
         >
           <LogOut className="h-5 w-5 text-red-600" />
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );

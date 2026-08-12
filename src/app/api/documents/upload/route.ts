@@ -79,9 +79,6 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Only store base64 in DB if file size is small (<300KB) to prevent SQL query length limits in Neon PostgreSQL
-    const base64Data = buffer.length <= 300 * 1024 ? buffer.toString("base64") : null;
-
     // 2. Direct server-side R2 upload
     try {
       await uploadFileToR2(storageKey, buffer, file.type);
@@ -100,7 +97,6 @@ export async function POST(request: NextRequest) {
       storageKey,
       mimeType: file.type,
       fileSize: file.size,
-      fileData: base64Data || undefined,
     });
 
     logger.info("upload", "Document processed successfully", {

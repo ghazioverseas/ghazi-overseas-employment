@@ -30,7 +30,6 @@ export const documents = pgTable(
     storageKey: text("storage_key").notNull().unique(),
     mimeType: text("mime_type").notNull(),
     fileSize: integer("file_size").notNull(),
-    fileData: text("file_data"),
     uploadDate: timestamp("upload_date").defaultNow().notNull(),
     verificationStatus: verificationStatusEnum("verification_status")
       .default("pending")

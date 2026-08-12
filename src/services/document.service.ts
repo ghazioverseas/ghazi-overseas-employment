@@ -66,7 +66,6 @@ export class DocumentService {
     storageKey: string;
     mimeType: string;
     fileSize: number;
-    fileData?: string;
   }) {
     try {
       let validCandidateId = data.candidateId;
@@ -111,7 +110,6 @@ export class DocumentService {
           storageKey: data.storageKey,
           mimeType: data.mimeType,
           fileSize: data.fileSize,
-          fileData: data.fileData || null,
           verificationStatus: "pending",
         })
         .returning();

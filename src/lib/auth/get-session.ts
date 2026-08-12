@@ -1,38 +1,60 @@
 import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth/auth";
 import { db } from "@/lib/db";
-import { sessions } from "@/db/schema/users";
-import { users } from "@/db/schema/users";
+import { sessions, users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
-export async function getSessionFromRequest() {
+export async function getSessionFromRequest(targetRole?: "admin" | "candidate") {
   try {
-    // 1. Try Better Auth's standard getSession API
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
-
-    if (session && session.user) {
-      return session;
-    }
-  } catch {
-    // Fall through to cookie + database fallback
-  }
-
-  try {
-    // 2. Direct Cookie + Database Session Lookup Fallback for Vercel/Next 15 proxy compatibility
     const cookieStore = await cookies();
-    const token =
-      cookieStore.get("better-auth.session_token")?.value ||
-      cookieStore.get("__Secure-better-auth.session_token")?.value ||
-      cookieStore.get("better-auth.session")?.value;
+    let token: string | undefined;
+
+    if (targetRole === "admin") {
+      token =
+        cookieStore.get("admin_session_token")?.value ||
+        cookieStore.get("__Secure-admin_session_token")?.value;
+    } else if (targetRole === "candidate") {
+      token =
+        cookieStore.get("better-auth.session_token")?.value ||
+        cookieStore.get("__Secure-better-auth.session_token")?.value ||
+        cookieStore.get("better-auth.session")?.value;
+    } else {
+      token =
+        cookieStore.get("admin_session_token")?.value ||
+        cookieStore.get("__Secure-admin_session_token")?.value ||
+        cookieStore.get("better-auth.session_token")?.value ||
+        cookieStore.get("__Secure-better-auth.session_token")?.value ||
+        cookieStore.get("better-auth.session")?.value;
+    }
 
     if (!token) {
       return null;
     }
 
+    // 1. Try Better Auth API if header matches
+    try {
+      const customHeaders = new Headers(await headers());
+      customHeaders.set("cookie", `better-auth.session_token=${token}`);
+      const session = await auth.api.getSession({
+        headers: customHeaders,
+      });
+
+      if (session && session.user) {
+        const role = (session.user as { role?: string }).role || "candidate";
+        if (targetRole === "admin" && role !== "admin") {
+          // Token belongs to non-admin
+        } else if (targetRole === "candidate" && role === "admin") {
+          // Token belongs to admin
+        } else {
+          return session;
+        }
+      }
+    } catch {
+      // Fall through to database lookup
+    }
+
+    // 2. Direct Cookie + Database Session Lookup Fallback
     const dbSessions = await db
       .select()
       .from(sessions)
@@ -59,6 +81,14 @@ export async function getSessionFromRequest() {
     }
 
     const u = userRecords[0];
+
+    if (targetRole === "admin" && u.role !== "admin") {
+      return null;
+    }
+    if (targetRole === "candidate" && u.role === "admin") {
+      return null;
+    }
+
     return {
       session: {
         id: sessionRecord.id,

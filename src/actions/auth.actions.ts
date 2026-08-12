@@ -292,9 +292,9 @@ export async function logoutAction() {
   }
 }
 
-export async function getAuthSessionAction() {
+export async function getAuthSessionAction(targetRole?: "admin" | "candidate") {
   try {
-    const session = await getSessionFromRequest();
+    const session = await getSessionFromRequest(targetRole);
 
     if (!session || !session.user) {
       return { success: false, user: null };

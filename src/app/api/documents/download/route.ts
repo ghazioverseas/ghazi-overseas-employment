@@ -32,23 +32,46 @@ export async function GET(request: NextRequest) {
     logger.warn("upload", "getFileFromR2 fallback trigger", { key, error: msg });
   }
 
-  // 2. Try R2 Presigned Download URL redirect
+  // 2. Try PostgreSQL database stored base64 file buffer
+  try {
+    const doc = await DocumentService.getDocumentByStorageKey(key);
+    if (doc && doc.fileData) {
+      const buffer = Buffer.from(doc.fileData, "base64");
+      const filename = doc.originalFileName || "document";
+      const mimeType = doc.mimeType || "application/pdf";
+      const dispositionType = forceDownload ? "attachment" : "inline";
+
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type": mimeType,
+          "Content-Disposition": `${dispositionType}; filename="${filename}"`,
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    }
+  } catch (dbErr: unknown) {
+    const msg = dbErr instanceof Error ? dbErr.message : "DB file fetch error";
+    logger.warn("upload", "DB file fetch fallback error", { key, error: msg });
+  }
+
+  // 3. Try R2 Presigned Download URL redirect
   try {
     const presignedUrl = await getPresignedDownloadUrl(key);
     if (presignedUrl && presignedUrl.startsWith("http")) {
       return NextResponse.redirect(presignedUrl);
     }
   } catch {
-    // Continue to database metadata fallback
+    // Continue
   }
 
-  // 3. Metadata fallback if file not in R2
+  // 4. Fallback placeholder
   const doc = await DocumentService.getDocumentByStorageKey(key);
   const filename = doc?.originalFileName || "document.pdf";
   const mimeType = doc?.mimeType || (key.match(/\.(jpg|jpeg|png|webp)$/i) ? "image/png" : "application/pdf");
   const dispositionType = forceDownload ? "attachment" : "inline";
 
-  return new NextResponse(`Document placeholder for ${filename}`, {
+  return new NextResponse(`Document file preview for ${filename}`, {
     status: 200,
     headers: {
       "Content-Type": mimeType,

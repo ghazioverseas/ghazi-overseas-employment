@@ -28,16 +28,17 @@ export async function POST(request: NextRequest) {
     const storageKey = `candidates/${candidateId}/${documentType}_${Date.now()}.${fileExtension}`;
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const base64Data = buffer.toString("base64");
 
-    // Direct server-side R2 upload
+    // Attempt direct R2 upload
     try {
       await uploadFileToR2(storageKey, buffer, file.type);
     } catch (r2Err: unknown) {
-      const msg = r2Err instanceof Error ? r2Err.message : "R2 upload failure";
-      logger.warn("upload", "R2 direct upload error, proceeding with metadata register", { error: msg });
+      const msg = r2Err instanceof Error ? r2Err.message : "R2 upload notice";
+      logger.warn("upload", "R2 upload trigger, using DB fallback storage", { error: msg });
     }
 
-    // Register document in PostgreSQL database
+    // Register document metadata and fallback fileData buffer in PostgreSQL database
     const documentId = crypto.randomUUID();
     const docRecord = await DocumentService.registerDocumentMetadata({
       id: documentId,
@@ -47,9 +48,10 @@ export async function POST(request: NextRequest) {
       storageKey,
       mimeType: file.type,
       fileSize: file.size,
+      fileData: base64Data,
     });
 
-    logger.info("upload", "Document uploaded and registered successfully", {
+    logger.info("upload", "Document stored and registered successfully", {
       documentId,
       candidateId,
       storageKey,

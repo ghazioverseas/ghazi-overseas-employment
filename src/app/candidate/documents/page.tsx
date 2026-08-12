@@ -191,13 +191,9 @@ export default function CandidateDocumentsPage() {
       toast({ title: "Preview Failed", description: "No document found for preview.", variant: "destructive" });
       return;
     }
-    setPreviewTitle(label);
-    setPreviewKey(key);
-    const isImg = !!key.match(/\.(jpg|jpeg|png|webp)$/i);
-    setPreviewMime(isImg ? "image" : "application/pdf");
-
-    const streamUrl = `/api/documents/download?key=${encodeURIComponent(key)}&t=${Date.now()}`;
-    setPreviewUrl(streamUrl);
+    const previewTabUrl = `/api/documents/download?key=${encodeURIComponent(key)}`;
+    window.open(previewTabUrl, "_blank");
+    toast({ title: "Opening Preview", description: `Opening ${label} in a new tab...`, variant: "success" });
   };
 
   const handleDownload = (key?: string, filename?: string) => {

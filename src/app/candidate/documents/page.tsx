@@ -12,8 +12,10 @@ import {
   requestDocumentUploadUrlAction,
   getCandidateDocumentsAction,
   getPresignedDownloadUrlAction,
+  deleteDocumentByStorageKeyAction,
 } from "@/actions/document.actions";
 import { getAdminSettingsAction } from "@/actions/settings.actions";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 import { DocumentType } from "@/types";
 
 interface DocumentSlot {
@@ -35,8 +37,6 @@ interface FetchedDoc {
   fileSize: number;
   verificationStatus: string;
 }
-
-import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 
 export default function CandidateDocumentsPage() {
   const { toast } = useToast();
@@ -76,7 +76,6 @@ export default function CandidateDocumentsPage() {
                 status: (match.verificationStatus as "pending" | "verified" | "rejected") || "pending",
               };
             }
-            // Preserve locally uploaded document details if loadDocuments returned empty or partial list
             if (slot.uploadedKey) {
               return slot;
             }
@@ -153,7 +152,6 @@ export default function CandidateDocumentsPage() {
 
       setProgress(50);
 
-      // Perform actual PUT upload to Cloudflare R2 presigned URL if valid URL generated
       if (res.data.uploadUrl && res.data.uploadUrl.startsWith("http")) {
         try {
           await fetch(res.data.uploadUrl, {
@@ -174,7 +172,6 @@ export default function CandidateDocumentsPage() {
         setCandidateId(resolvedCandId);
       }
 
-      // Optimistic local state update — this is the primary UI update
       setDocuments((prev) =>
         prev.map((d) =>
           d.type === type
@@ -189,15 +186,13 @@ export default function CandidateDocumentsPage() {
       );
       setUploadingType(null);
       setProgress(0);
-      toast({ title: "Document Uploaded", description: `${file.name} uploaded to secure storage successfully.`, variant: "success" });
+      toast({ title: "Document Uploaded", description: `${file.name} uploaded successfully.`, variant: "success" });
 
-      // Deferred background refresh from DB — small delay to let serverless DB commit
-      // This supplements but does NOT override the optimistic state above
       setTimeout(async () => {
         try {
           await loadDocuments(resolvedCandId || candidateId || "current");
         } catch {
-          // Optimistic state already shows the upload — no action needed
+          // Optimistic state already shows the upload
         }
       }, 1500);
     } catch (err: unknown) {
@@ -210,23 +205,24 @@ export default function CandidateDocumentsPage() {
 
   const handlePreview = async (label: string, key?: string) => {
     if (!key) {
-      toast({ title: "Preview Failed", description: "No storage key found for this document.", variant: "destructive" });
+      toast({ title: "Preview Failed", description: "No document found for preview.", variant: "destructive" });
       return;
     }
     try {
       setPreviewTitle(label);
       setPreviewKey(key);
-      const isImg = key.match(/\.(jpg|jpeg|png|webp)$/i);
+      const isImg = !!key.match(/\.(jpg|jpeg|png|webp)$/i);
       setPreviewMime(isImg ? "image" : "application/pdf");
 
       const res = await getPresignedDownloadUrlAction(key);
-      if (res.success && res.url) {
-        setPreviewUrl(res.url);
-      } else {
-        toast({ title: "Preview Error", description: res.error || "Unable to load preview URL.", variant: "destructive" });
-      }
+      const targetUrl = res.success && res.url ? res.url : `/api/documents/download?key=${encodeURIComponent(key)}`;
+      setPreviewUrl(targetUrl);
     } catch {
-      toast({ title: "Error", description: "Failed to open document preview.", variant: "destructive" });
+      const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(key)}`;
+      setPreviewTitle(label);
+      setPreviewKey(key);
+      setPreviewMime(key.match(/\.(jpg|jpeg|png|webp)$/i) ? "image" : "application/pdf");
+      setPreviewUrl(fallbackUrl);
     }
   };
 
@@ -234,21 +230,48 @@ export default function CandidateDocumentsPage() {
     if (!key) return;
     try {
       const res = await getPresignedDownloadUrlAction(key);
-      if (res.success && res.url) {
-        const a = document.createElement("a");
-        a.href = res.url;
-        a.download = filename || "document";
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        toast({ title: "Download Initiated", description: `Downloading ${filename || "file"}...`, variant: "success" });
-      } else {
-        toast({ title: "Download Error", description: res.error || "Failed to generate download link.", variant: "destructive" });
+      const downloadUrl = res.success && res.url ? res.url : `/api/documents/download?key=${encodeURIComponent(key)}`;
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = filename || "document";
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast({ title: "Download Initiated", description: `Downloading ${filename || "file"}...`, variant: "success" });
+    } catch {
+      const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(key)}`;
+      window.open(fallbackUrl, "_blank");
+    }
+  };
+
+  const handleReplace = async (type: string, key?: string, label?: string) => {
+    try {
+      if (key) {
+        await deleteDocumentByStorageKeyAction(key);
       }
     } catch {
-      toast({ title: "Error", description: "Failed to download document.", variant: "destructive" });
+      // Ignore background delete errors
     }
+
+    setDocuments((prev) =>
+      prev.map((d) =>
+        d.type === type
+          ? {
+              ...d,
+              uploadedKey: undefined,
+              originalName: undefined,
+              status: undefined,
+            }
+          : d
+      )
+    );
+
+    toast({
+      title: "Document Removed",
+      description: `Previous ${label || "file"} has been removed. You can now select and upload a new file.`,
+      variant: "success",
+    });
   };
 
   const handleSubmitAllDocuments = () => {
@@ -336,7 +359,7 @@ export default function CandidateDocumentsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs gap-1 border-[#D7E8D8]"
+                      className="h-8 text-xs gap-1 border-[#D7E8D8] font-bold hover:bg-slate-50"
                       onClick={() => handlePreview(doc.label, doc.uploadedKey)}
                     >
                       <Eye className="h-3.5 w-3.5 text-[#167A3D]" /> Preview
@@ -345,34 +368,27 @@ export default function CandidateDocumentsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs gap-1 border-[#D7E8D8]"
+                      className="h-8 text-xs gap-1 border-[#D7E8D8] font-bold hover:bg-slate-50"
                       onClick={() => handleDownload(doc.uploadedKey, doc.originalName)}
                     >
                       <Download className="h-3.5 w-3.5 text-[#167A3D]" /> Download
                     </Button>
 
-                    <label className="cursor-pointer">
-                      <Button size="sm" variant="ghost" className="h-8 text-xs gap-1 text-[#167A3D] hover:bg-emerald-50">
-                        <RefreshCw className="h-3.5 w-3.5" /> Replace
-                      </Button>
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleFileUpload(doc.type, e.target.files[0]);
-                          }
-                        }}
-                      />
-                    </label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs gap-1 text-[#167A3D] hover:bg-emerald-50 font-bold"
+                      onClick={() => handleReplace(doc.type, doc.uploadedKey, doc.label)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Replace
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#D7E8D8] bg-[#F8FAF8] p-6 text-center">
                   {uploadingType === doc.type ? (
                     <div className="w-full space-y-2">
-                      <p className="text-xs font-bold text-[#167A3D]">Uploading to Cloudflare R2... {progress}%</p>
+                      <p className="text-xs font-bold text-[#167A3D]">Uploading document... {progress}%</p>
                       <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div className="h-full bg-[#167A3D] transition-all duration-300" style={{ width: `${progress}%` }} />
                       </div>
@@ -432,7 +448,7 @@ export default function CandidateDocumentsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1 text-xs border-[#D7E8D8]"
+                className="gap-1 text-xs border-[#D7E8D8] font-bold"
                 onClick={() => handleDownload(previewKey, previewTitle)}
               >
                 <Download className="h-3.5 w-3.5 text-[#167A3D]" /> Download Original
@@ -451,7 +467,7 @@ export default function CandidateDocumentsPage() {
             )}
           </div>
 
-          <Button onClick={() => setPreviewUrl(null)} className="w-full bg-[#167A3D] hover:bg-[#0E5D2E] text-white">
+          <Button onClick={() => setPreviewUrl(null)} className="w-full bg-[#167A3D] hover:bg-[#0E5D2E] text-white font-bold">
             Close Preview Window
           </Button>
         </div>

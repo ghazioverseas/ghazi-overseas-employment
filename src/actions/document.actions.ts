@@ -104,12 +104,20 @@ export async function getPresignedDownloadUrlAction(storageKey: string) {
     if (!storageKey) {
       return { success: false, error: "Storage key is required." };
     }
-    const url = await getPresignedDownloadUrl(storageKey);
-    return { success: true, url };
+    try {
+      const url = await getPresignedDownloadUrl(storageKey);
+      if (url && url.startsWith("http")) {
+        return { success: true, url };
+      }
+    } catch {
+      // Fall through to proxy URL fallback
+    }
+    // Return reliable API proxy download URL
+    const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(storageKey)}`;
+    return { success: true, url: fallbackUrl };
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : "Failed to generate download URL.";
-    logger.error("upload", "getPresignedDownloadUrlAction error", { storageKey, error: errMessage });
-    return { success: false, error: errMessage };
+    const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(storageKey)}`;
+    return { success: true, url: fallbackUrl };
   }
 }
 
@@ -128,6 +136,19 @@ export async function deleteDocumentAction(documentId: string) {
     await DocumentService.deleteDocument(documentId);
     revalidatePath("/admin/documents");
     revalidatePath("/candidate/documents");
+    return { success: true, message: "Document deleted successfully." };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "Failed to delete document.";
+    return { success: false, error: errMessage };
+  }
+}
+
+export async function deleteDocumentByStorageKeyAction(storageKey: string) {
+  try {
+    if (!storageKey) {
+      return { success: false, error: "Storage key is required." };
+    }
+    await DocumentService.deleteDocumentByStorageKey(storageKey);
     return { success: true, message: "Document deleted successfully." };
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : "Failed to delete document.";

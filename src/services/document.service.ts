@@ -189,4 +189,18 @@ export class DocumentService {
       return null;
     }
   }
+
+  static async deleteDocumentByStorageKey(storageKey: string) {
+    try {
+      const deleted = await db
+        .delete(documents)
+        .where(eq(documents.storageKey, storageKey))
+        .returning();
+      return deleted[0] || null;
+    } catch (error: unknown) {
+      const errMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("database", "Failed to delete document by storage key", { storageKey, error: errMessage });
+      return null;
+    }
+  }
 }

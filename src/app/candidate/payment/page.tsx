@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { CreditCard, CheckCircle2, Building2, Smartphone, Copy, Check, AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
+import { CreditCard, CheckCircle2, Copy, Check, AlertCircle, ArrowRight, ShieldCheck, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitPaymentProofAction } from "@/actions/payment.actions";
 import { getAdminSettingsAction } from "@/actions/settings.actions";
@@ -22,6 +22,7 @@ export default function CandidatePaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "easypaisa" | "jazzcash">("bank_transfer");
   const [paymentStatus, setPaymentStatus] = useState<"pending_payment" | "payment_under_review" | "approved" | "rejected">("pending_payment");
   const [submissionFee, setSubmissionFee] = useState(500);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   // Bank & Mobile Wallet account details
   const [bankDetails, setBankDetails] = useState({
@@ -101,17 +102,42 @@ export default function CandidatePaymentPage() {
 
     setLoading(true);
     try {
+      let uploadedProofKey = "";
+
+      // Upload receipt image/PDF if attached
+      if (receiptFile) {
+        try {
+          const formData = new FormData();
+          formData.append("file", receiptFile);
+          formData.append("documentType", "experience_certificate");
+          formData.append("candidateId", candidateId);
+
+          const uploadRes = await fetch("/api/documents/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadData = await uploadRes.json();
+          if (uploadData.success && uploadData.data?.storageKey) {
+            uploadedProofKey = uploadData.data.storageKey;
+          }
+        } catch (uploadErr) {
+          console.warn("Receipt file upload warning:", uploadErr);
+        }
+      }
+
       const res = await submitPaymentProofAction({
         candidateId,
         transactionRef: transactionRef.trim(),
         paymentMethod,
+        paymentProofKey: uploadedProofKey || undefined,
       });
 
       if (res.success) {
         setPaymentStatus("payment_under_review");
         toast({
-          title: "Payment Submitted Successfully",
-          description: "Transaction reference submitted. Status is now Payment Under Review.",
+          title: "Payment Proof Submitted",
+          description: "Transaction reference and receipt submitted. Status is now Payment Under Review.",
           variant: "success",
         });
       } else {
@@ -407,6 +433,65 @@ export default function CandidatePaymentPage() {
                   <p className="text-[10px] text-slate-500">
                     Enter the TID or transaction reference number from your bank transfer receipt or mobile wallet SMS.
                   </p>
+                </div>
+
+                {/* Upload Receipt Screenshot Field */}
+                <div className="space-y-1.5 pt-1">
+                  <Label htmlFor="receiptUpload" className="font-bold">Upload Transaction Receipt / Screenshot (Optional)</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      type="file"
+                      id="receiptUpload"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setReceiptFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="receiptUpload"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-[#D7E8D8] bg-[#F8FAF8] hover:bg-emerald-50 text-xs font-semibold text-[#167A3D] cursor-pointer transition-colors"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {receiptFile ? (
+                        <span className="truncate max-w-[220px] text-slate-800 font-bold">{receiptFile.name}</span>
+                      ) : (
+                        <span>Choose Receipt Image or Screenshot</span>
+                      )}
+                    </label>
+                    {receiptFile && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs text-red-600 hover:bg-red-50 font-bold"
+                        onClick={() => setReceiptFile(null)}
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" /> Remove File
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Attach bank transfer slip, ATM receipt photo, or mobile wallet screenshot (JPG, PNG, PDF up to 10MB).
+                  </p>
+                </div>
+
+                {/* Legal Disclaimer & Non-Refundable Policy Notice Box */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3.5 space-y-2 text-xs text-amber-950">
+                  <div className="flex items-center gap-2 font-bold text-amber-900">
+                    <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                    <span>Important Terms & Legal Disclaimer</span>
+                  </div>
+                  <ul className="space-y-1.5 text-[11px] text-slate-700 leading-relaxed list-disc list-inside">
+                    <li>
+                      <strong className="text-slate-900">Non-Refundable Fee:</strong> The application processing fee of <strong>Rs. {submissionFee}</strong> is strictly <strong>Non-Refundable</strong> under any circumstances once submitted.
+                    </li>
+                    <li>
+                      <strong className="text-slate-900">No Interview or Job Selection Guarantee:</strong> Payment of the application fee does <strong>NOT guarantee an interview, shortlisting, or job placement</strong>. Fee payment covers candidate profile registration, document clearance, and administrative evaluation. Final selection and interview invitations depend entirely on foreign employer quotas, visa criteria, and trade test qualifications.
+                    </li>
+                  </ul>
                 </div>
 
                 <Button

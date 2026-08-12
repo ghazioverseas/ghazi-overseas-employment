@@ -57,10 +57,6 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-4 md:flex">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#167A3D] bg-[#167A3D]/10 px-3 py-1.5 rounded-full border border-[#D7E8D8]">
-            <ShieldCheck className="h-4 w-4 text-[#167A3D]" />
-            <span>Government Verification Portal</span>
-          </div>
 
           {user ? (
             <div className="flex items-center gap-3">

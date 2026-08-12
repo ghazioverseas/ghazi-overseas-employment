@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
@@ -14,14 +14,23 @@ export const metadata: Metadata = {
     template: "%s | Ghazi Overseas Employment Pakistan",
   },
   description:
-    "Official Candidate Application Portal for Ghazi Overseas Employment Pakistan. Licensed Overseas Employment Promoter (OPEP-1234). Apply for overseas jobs in KSA, UAE, Qatar, and Gulf region.",
+    "Official Candidate Application Portal for Ghazi Overseas Employment Pakistan. Licensed Overseas Employment Promoter (OPEP-2636/KARACHI). Apply for overseas jobs in KSA, UAE, Qatar, and Gulf region.",
   keywords: [
     "Ghazi Overseas Employment",
     "Overseas Jobs Pakistan",
     "Work Visa KSA UAE",
-    "OPEP-1234",
+    "OPEP-2636",
     "Overseas Recruitment Portal",
   ],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#167A3D",
 };
 
 export default function RootLayout({
@@ -30,8 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased`}>
+    <html lang="en" className="h-full scroll-smooth">
+      <body className={`${inter.className} min-h-screen flex flex-col bg-[#F8FAF8] text-slate-900 antialiased selection:bg-[#167A3D] selection:text-white`}>
         <ErrorBoundary>
           <Navbar />
           <main className="flex-1">{children}</main>

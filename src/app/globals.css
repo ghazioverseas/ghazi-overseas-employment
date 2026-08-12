@@ -35,6 +35,12 @@
 
     --radius: 0.75rem;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 }
 
 @layer base {
@@ -43,5 +49,32 @@
   }
   body {
     @apply bg-[#F8FAF8] text-[#1F2937] antialiased overflow-x-hidden min-h-screen flex flex-col font-sans;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C2DEC4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #167A3D;
+}
+
+/* Touch friendly inputs for mobile devices */
+@media (max-width: 640px) {
+  input, select, textarea, button {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
   }
 }

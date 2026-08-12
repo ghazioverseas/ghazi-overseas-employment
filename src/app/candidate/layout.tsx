@@ -11,9 +11,9 @@ export default function CandidateLayout({
 }) {
   return (
     <CandidateAuthGuard>
-      <div className="flex min-h-screen bg-[#F8FAF8]">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-[#F8FAF8]">
         <Sidebar />
-        <main className="flex-1 p-6 md:p-8 max-w-6xl mx-auto w-full">{children}</main>
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">{children}</main>
       </div>
     </CandidateAuthGuard>
   );

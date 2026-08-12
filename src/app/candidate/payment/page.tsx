@@ -158,107 +158,113 @@ export default function CandidatePaymentPage() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-          {/* Card 1: Bank Transfer */}
-          <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
-            <div className="bg-[#167A3D] text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+          {/* Card 1: Bank Transfer (Meezan Bank - Purple Theme) */}
+          <Card className="border-[#4A144E]/30 bg-[#FAF7FB] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
+            <div className="bg-[#4A144E] text-white p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-xs font-extrabold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/payments/meezan-bank-logo.png" alt="Meezan Bank" className="h-8 w-8 object-contain rounded-full bg-white p-0.5 shadow-sm" />
-                <span>Bank Account Transfer</span>
+                <img src="/images/payments/meezan-bank-logo.png" alt="Meezan Bank" className="h-11 w-11 object-contain rounded-full bg-white p-1 shadow-md shrink-0" />
+                <div>
+                  <span className="block text-xs font-extrabold">Bank Account Transfer</span>
+                  <span className="text-[10px] text-purple-200 font-normal">Meezan Bank Limited</span>
+                </div>
               </div>
-              <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Recommended</span>
+              <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full shrink-0">Recommended</span>
             </div>
 
             <CardContent className="p-4 space-y-3 text-xs flex-1 flex flex-col justify-between">
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase">Bank Name</span>
-                  <p className="font-extrabold text-slate-900">{bankDetails.bankName}</p>
+                  <span className="text-[10px] font-bold text-[#4A144E]/70 uppercase tracking-wider">Bank Name</span>
+                  <p className="font-extrabold text-[#4A144E] text-sm">{bankDetails.bankName}</p>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase">Account Title</span>
-                  <p className="font-bold text-slate-800">{bankDetails.accountTitle}</p>
+                  <span className="text-[10px] font-bold text-[#4A144E]/70 uppercase tracking-wider">Account Title</span>
+                  <p className="font-bold text-slate-900">{bankDetails.accountTitle}</p>
                 </div>
 
-                <div className="rounded-xl bg-[#F8FAF8] p-2.5 border border-[#D7E8D8] space-y-1.5">
+                <div className="rounded-xl bg-[#F4ECF5] p-3 border border-[#D8C2DA] space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-slate-500 font-semibold">Account Number:</span>
-                      <p className="font-black text-slate-900 tracking-wider text-xs">{bankDetails.accountNumber}</p>
+                      <span className="text-[10px] text-slate-600 font-bold">Account Number:</span>
+                      <p className="font-black text-[#4A144E] tracking-wider text-xs">{bankDetails.accountNumber}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[10px] gap-1 text-[#167A3D] hover:bg-emerald-100"
+                      className="h-7 px-2.5 text-[10px] gap-1 text-[#4A144E] hover:bg-[#EADCEB] font-bold"
                       onClick={() => copyToClipboard(bankDetails.accountNumber, "Account Number")}
                     >
-                      {copiedField === "Account Number" ? <Check className="h-3 w-3 text-emerald-700" /> : <Copy className="h-3 w-3" />}
+                      {copiedField === "Account Number" ? <Check className="h-3.5 w-3.5 text-[#4A144E]" /> : <Copy className="h-3.5 w-3.5" />}
                       {copiedField === "Account Number" ? "Copied" : "Copy"}
                     </Button>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+                  <div className="flex items-center justify-between border-t border-[#D8C2DA] pt-2">
                     <div>
-                      <span className="text-[10px] text-slate-500 font-semibold">IBAN Number:</span>
-                      <p className="font-black text-[#167A3D] tracking-wider text-[11px] truncate max-w-[140px]">{bankDetails.iban}</p>
+                      <span className="text-[10px] text-slate-600 font-bold">IBAN Number:</span>
+                      <p className="font-black text-[#4A144E] tracking-wider text-[11px] truncate max-w-[140px]">{bankDetails.iban}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[10px] gap-1 text-[#167A3D] hover:bg-emerald-100"
+                      className="h-7 px-2.5 text-[10px] gap-1 text-[#4A144E] hover:bg-[#EADCEB] font-bold"
                       onClick={() => copyToClipboard(bankDetails.iban, "IBAN")}
                     >
-                      {copiedField === "IBAN" ? <Check className="h-3 w-3 text-emerald-700" /> : <Copy className="h-3 w-3" />}
+                      {copiedField === "IBAN" ? <Check className="h-3.5 w-3.5 text-[#4A144E]" /> : <Copy className="h-3.5 w-3.5" />}
                       {copiedField === "IBAN" ? "Copied" : "Copy"}
                     </Button>
                   </div>
                 </div>
               </div>
 
-              <p className="text-[10px] text-slate-500 italic mt-2">
+              <p className="text-[10px] text-purple-900/70 italic mt-2 font-medium">
                 Transfer via 1Link, ATM, Mobile Banking App, or Counter Deposit.
               </p>
             </CardContent>
           </Card>
 
-          {/* Card 2: EasyPaisa */}
-          <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
-            <div className="bg-emerald-700 text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+          {/* Card 2: EasyPaisa (Green Theme) */}
+          <Card className="border-[#00A859]/30 bg-[#F2FBF6] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
+            <div className="bg-[#00A859] text-white p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-xs font-extrabold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/payments/easypaisa-logo.png" alt="EasyPaisa" className="h-7 w-auto max-w-[70px] object-contain rounded bg-white p-0.5 shadow-sm" />
-                <span>EasyPaisa Mobile Wallet</span>
+                <img src="/images/payments/easypaisa-logo.png" alt="EasyPaisa" className="h-10 w-auto max-w-[90px] object-contain rounded-lg bg-white p-1 shadow-md shrink-0" />
+                <div>
+                  <span className="block text-xs font-extrabold">EasyPaisa Mobile Wallet</span>
+                  <span className="text-[10px] text-emerald-100 font-normal">Instant Transfer</span>
+                </div>
               </div>
-              <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Instant</span>
+              <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full shrink-0">Instant</span>
             </div>
 
             <CardContent className="p-4 space-y-3 text-xs flex-1 flex flex-col justify-between">
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase">Account Title</span>
-                  <p className="font-bold text-slate-800">{bankDetails.easypaisaTitle}</p>
+                  <span className="text-[10px] font-bold text-[#00A859]/80 uppercase tracking-wider">Account Title</span>
+                  <p className="font-extrabold text-[#006B38] text-sm">{bankDetails.easypaisaTitle}</p>
                 </div>
 
-                <div className="rounded-xl bg-[#F8FAF8] p-2.5 border border-[#D7E8D8] flex items-center justify-between">
+                <div className="rounded-xl bg-[#E6F7ED] p-3 border border-[#A2E3BF] flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-slate-500 font-semibold">EasyPaisa Account Number:</span>
-                    <p className="font-black text-slate-900 tracking-wider text-sm">{bankDetails.easypaisaNumber}</p>
+                    <span className="text-[10px] text-slate-700 font-bold">EasyPaisa Account Number:</span>
+                    <p className="font-black text-[#006B38] tracking-wider text-base">{bankDetails.easypaisaNumber}</p>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-2 text-[10px] gap-1 text-[#167A3D] hover:bg-emerald-100"
+                    className="h-8 px-2.5 text-[10px] gap-1 text-[#006B38] hover:bg-[#C9F0DB] font-bold"
                     onClick={() => copyToClipboard(bankDetails.easypaisaNumber, "EasyPaisa Number")}
                   >
-                    {copiedField === "EasyPaisa Number" ? <Check className="h-3 w-3 text-emerald-700" /> : <Copy className="h-3 w-3" />}
+                    {copiedField === "EasyPaisa Number" ? <Check className="h-3.5 w-3.5 text-[#006B38]" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedField === "EasyPaisa Number" ? "Copied" : "Copy"}
                   </Button>
                 </div>
 
-                <div className="rounded-lg bg-emerald-50/70 p-2.5 border border-emerald-100 space-y-1 text-[11px] text-slate-700">
-                  <p className="font-bold text-slate-900">How to pay via EasyPaisa:</p>
-                  <ol className="list-decimal list-inside space-y-0.5 text-[10px]">
+                <div className="rounded-lg bg-[#D8F3E5] p-2.5 border border-[#A2E3BF] space-y-1 text-[11px] text-slate-800">
+                  <p className="font-bold text-[#006B38]">How to pay via EasyPaisa:</p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-[10px] text-slate-700">
                     <li>Open EasyPaisa App & Select <strong>Send Money</strong></li>
                     <li>Choose <strong>EasyPaisa Account</strong></li>
                     <li>Enter <strong>{bankDetails.easypaisaNumber}</strong> & Amount <strong>Rs. {submissionFee}</strong></li>
@@ -269,43 +275,46 @@ export default function CandidatePaymentPage() {
             </CardContent>
           </Card>
 
-          {/* Card 3: JazzCash */}
-          <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
-            <div className="bg-red-700 text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+          {/* Card 3: JazzCash (Red & Yellow Theme) */}
+          <Card className="border-[#E31B23]/30 bg-[#FFFDF5] shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
+            <div className="bg-gradient-to-r from-[#E31B23] via-[#D1171E] to-[#E31B23] text-white p-3.5 flex items-center justify-between border-b-4 border-[#FFC20E]">
+              <div className="flex items-center gap-3 text-xs font-extrabold">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/payments/jazzcash-logo.png" alt="JazzCash" className="h-7 w-auto max-w-[70px] object-contain rounded bg-white p-0.5 shadow-sm" />
-                <span>JazzCash Mobile Wallet</span>
+                <img src="/images/payments/jazzcash-logo.png" alt="JazzCash" className="h-10 w-auto max-w-[90px] object-contain rounded-lg bg-white p-1 shadow-md shrink-0" />
+                <div>
+                  <span className="block text-xs font-extrabold">JazzCash Mobile Wallet</span>
+                  <span className="text-[10px] text-yellow-200 font-normal">Instant Transfer</span>
+                </div>
               </div>
-              <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Instant</span>
+              <span className="text-[10px] bg-[#FFC20E] text-slate-950 font-black px-2.5 py-0.5 rounded-full shrink-0 shadow-sm">Instant</span>
             </div>
 
             <CardContent className="p-4 space-y-3 text-xs flex-1 flex flex-col justify-between">
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase">Account Title</span>
-                  <p className="font-bold text-slate-800">{bankDetails.jazzcashTitle}</p>
+                  <span className="text-[10px] font-bold text-[#E31B23]/80 uppercase tracking-wider">Account Title</span>
+                  <p className="font-extrabold text-[#B91C1C] text-sm">{bankDetails.jazzcashTitle}</p>
                 </div>
 
-                <div className="rounded-xl bg-[#F8FAF8] p-2.5 border border-[#D7E8D8] flex items-center justify-between">
+                <div className="rounded-xl bg-[#FFF7D6] p-3 border border-[#FCD34D] flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-slate-500 font-semibold">JazzCash Account Number:</span>
-                    <p className="font-black text-slate-900 tracking-wider text-sm">{bankDetails.jazzcashNumber}</p>
+                    <span className="text-[10px] text-slate-800 font-bold">JazzCash Account Number:</span>
+                    <p className="font-black text-[#B91C1C] tracking-wider text-base">{bankDetails.jazzcashNumber}</p>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-2 text-[10px] gap-1 text-[#167A3D] hover:bg-emerald-100"
+                    className="h-8 px-2.5 text-[10px] gap-1 text-[#B91C1C] hover:bg-[#FEF08A] font-bold"
                     onClick={() => copyToClipboard(bankDetails.jazzcashNumber, "JazzCash Number")}
                   >
-                    {copiedField === "JazzCash Number" ? <Check className="h-3 w-3 text-emerald-700" /> : <Copy className="h-3 w-3" />}
+                    {copiedField === "JazzCash Number" ? <Check className="h-3.5 w-3.5 text-[#B91C1C]" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedField === "JazzCash Number" ? "Copied" : "Copy"}
                   </Button>
                 </div>
 
-                <div className="rounded-lg bg-red-50/70 p-2.5 border border-red-100 space-y-1 text-[11px] text-slate-700">
-                  <p className="font-bold text-slate-900">How to pay via JazzCash:</p>
-                  <ol className="list-decimal list-inside space-y-0.5 text-[10px]">
+                <div className="rounded-lg bg-[#FEF3C7] p-2.5 border border-[#FDE68A] space-y-1 text-[11px] text-slate-800">
+                  <p className="font-bold text-[#B91C1C]">How to pay via JazzCash:</p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-[10px] text-slate-700">
                     <li>Open JazzCash App or Dial <strong>*786#</strong></li>
                     <li>Select <strong>Money Transfer</strong> ➔ <strong>JazzCash Account</strong></li>
                     <li>Enter <strong>{bankDetails.jazzcashNumber}</strong> & Amount <strong>Rs. {submissionFee}</strong></li>

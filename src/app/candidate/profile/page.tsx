@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Save, Loader2, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentCandidateProfileAction, updateCandidateProfileAction } from "@/actions/candidate.actions";
@@ -255,6 +256,20 @@ export default function CandidateProfilePage() {
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="e.g. Karachi"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="province">Province</Label>
+                <Select
+                  id="province"
+                  value={formData.province || "Sindh"}
+                  onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+                >
+                  <option value="Sindh">Sindh</option>
+                  <option value="Punjab">Punjab</option>
+                  <option value="Balochistan">Balochistan</option>
+                  <option value="KPK">KPK</option>
+                </Select>
               </div>
 
               <div className="space-y-1.5">

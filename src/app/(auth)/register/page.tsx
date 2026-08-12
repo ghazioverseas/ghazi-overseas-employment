@@ -32,6 +32,7 @@ export default function RegisterPage() {
     defaultValues: {
       country: "Pakistan",
       gender: "Male",
+      province: "Sindh",
       yearsOfExperience: 2,
       noPassport: false,
     },
@@ -226,7 +227,12 @@ export default function RegisterPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="province">Province *</Label>
-                  <Input id="province" placeholder="Sindh / Punjab / KPK" {...register("province")} />
+                  <Select id="province" {...register("province")}>
+                    <option value="Sindh">Sindh</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Balochistan">Balochistan</option>
+                    <option value="KPK">KPK</option>
+                  </Select>
                   {errors.province && <p className="text-xs text-red-600 font-medium">{errors.province.message}</p>}
                 </div>
 

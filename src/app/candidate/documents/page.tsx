@@ -9,14 +9,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { Upload, FileText, CheckCircle2, Eye, Download, RefreshCw, AlertCircle, Send, FileCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  requestDocumentUploadUrlAction,
   getCandidateDocumentsAction,
-  getPresignedDownloadUrlAction,
   deleteDocumentByStorageKeyAction,
 } from "@/actions/document.actions";
 import { getAdminSettingsAction } from "@/actions/settings.actions";
 import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
-import { DocumentType } from "@/types";
 
 interface DocumentSlot {
   type: string;
@@ -135,66 +132,52 @@ export default function CandidateDocumentsPage() {
     }
 
     setUploadingType(type);
-    setProgress(20);
+    setProgress(30);
 
     try {
-      const res = await requestDocumentUploadUrlAction({
-        candidateId: candidateId || "current",
-        documentType: type as DocumentType,
-        originalFileName: file.name,
-        mimeType: file.type,
-        fileSize: file.size,
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("documentType", type);
+      formData.append("candidateId", candidateId || "current");
+
+      setProgress(60);
+
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData,
       });
 
-      if (!res.success || !res.data) {
-        throw new Error(res.error || "Failed to generate presigned upload token.");
-      }
-
-      setProgress(50);
-
-      if (res.data.uploadUrl && res.data.uploadUrl.startsWith("http")) {
-        try {
-          await fetch(res.data.uploadUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": file.type,
-            },
-            body: file,
-          });
-        } catch (r2Err) {
-          console.warn("Direct R2 presigned PUT upload warning:", r2Err);
-        }
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to upload document.");
       }
 
       setProgress(100);
-      const resolvedCandId = res.data?.candidateId || candidateId;
-      if (resolvedCandId && resolvedCandId !== candidateId) {
-        setCandidateId(resolvedCandId);
-      }
 
       setDocuments((prev) =>
         prev.map((d) =>
           d.type === type
             ? {
                 ...d,
-                uploadedKey: res.data?.storageKey || `uploaded_${type}_${Date.now()}`,
+                uploadedKey: data.data.storageKey,
                 originalName: file.name,
                 status: "pending" as const,
               }
             : d
         )
       );
+
       setUploadingType(null);
       setProgress(0);
       toast({ title: "Document Uploaded", description: `${file.name} uploaded successfully.`, variant: "success" });
 
       setTimeout(async () => {
         try {
-          await loadDocuments(resolvedCandId || candidateId || "current");
+          await loadDocuments(candidateId || "current");
         } catch {
-          // Optimistic state already shows the upload
+          // Optimistic state remains active
         }
-      }, 1500);
+      }, 1000);
     } catch (err: unknown) {
       setUploadingType(null);
       setProgress(0);
@@ -203,46 +186,31 @@ export default function CandidateDocumentsPage() {
     }
   };
 
-  const handlePreview = async (label: string, key?: string) => {
+  const handlePreview = (label: string, key?: string) => {
     if (!key) {
       toast({ title: "Preview Failed", description: "No document found for preview.", variant: "destructive" });
       return;
     }
-    try {
-      setPreviewTitle(label);
-      setPreviewKey(key);
-      const isImg = !!key.match(/\.(jpg|jpeg|png|webp)$/i);
-      setPreviewMime(isImg ? "image" : "application/pdf");
+    setPreviewTitle(label);
+    setPreviewKey(key);
+    const isImg = !!key.match(/\.(jpg|jpeg|png|webp)$/i);
+    setPreviewMime(isImg ? "image" : "application/pdf");
 
-      const res = await getPresignedDownloadUrlAction(key);
-      const targetUrl = res.success && res.url ? res.url : `/api/documents/download?key=${encodeURIComponent(key)}`;
-      setPreviewUrl(targetUrl);
-    } catch {
-      const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(key)}`;
-      setPreviewTitle(label);
-      setPreviewKey(key);
-      setPreviewMime(key.match(/\.(jpg|jpeg|png|webp)$/i) ? "image" : "application/pdf");
-      setPreviewUrl(fallbackUrl);
-    }
+    const streamUrl = `/api/documents/download?key=${encodeURIComponent(key)}&t=${Date.now()}`;
+    setPreviewUrl(streamUrl);
   };
 
-  const handleDownload = async (key?: string, filename?: string) => {
+  const handleDownload = (key?: string, filename?: string) => {
     if (!key) return;
-    try {
-      const res = await getPresignedDownloadUrlAction(key);
-      const downloadUrl = res.success && res.url ? res.url : `/api/documents/download?key=${encodeURIComponent(key)}`;
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename || "document";
-      a.target = "_blank";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast({ title: "Download Initiated", description: `Downloading ${filename || "file"}...`, variant: "success" });
-    } catch {
-      const fallbackUrl = `/api/documents/download?key=${encodeURIComponent(key)}`;
-      window.open(fallbackUrl, "_blank");
-    }
+    const downloadUrl = `/api/documents/download?key=${encodeURIComponent(key)}&download=true`;
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename || "document";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast({ title: "Download Initiated", description: `Downloading ${filename || "file"}...`, variant: "success" });
   };
 
   const handleReplace = async (type: string, key?: string, label?: string) => {
@@ -269,7 +237,7 @@ export default function CandidateDocumentsPage() {
 
     toast({
       title: "Document Removed",
-      description: `Previous ${label || "file"} has been removed. You can now select and upload a new file.`,
+      description: `Previous ${label || "file"} removed. You can now upload a replacement file.`,
       variant: "success",
     });
   };

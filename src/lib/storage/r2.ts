@@ -24,6 +24,32 @@ export const ALLOWED_MIME_TYPES = [
   "image/webp",
 ];
 
+export async function uploadFileToR2(key: string, buffer: Buffer, contentType: string) {
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+  return r2Client.send(command);
+}
+
+export async function getFileFromR2(key: string) {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  });
+  const res = await r2Client.send(command);
+  if (!res.Body) {
+    throw new Error("Empty body returned from R2 storage");
+  }
+  const bytes = await res.Body.transformToByteArray();
+  return {
+    buffer: Buffer.from(bytes),
+    contentType: res.ContentType || "application/octet-stream",
+  };
+}
+
 export async function getPresignedUploadUrl(key: string, contentType: string, expiresIn = 3600) {
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,

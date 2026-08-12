@@ -1,5 +1,4 @@
-import { cookies, headers } from "next/headers";
-import { auth } from "@/lib/auth/auth";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { sessions, users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
@@ -11,15 +10,18 @@ export async function getSessionFromRequest(targetRole?: "admin" | "candidate") 
     let token: string | undefined;
 
     if (targetRole === "admin") {
+      // Admin lookup strictly checks admin_session_token
       token =
         cookieStore.get("admin_session_token")?.value ||
         cookieStore.get("__Secure-admin_session_token")?.value;
     } else if (targetRole === "candidate") {
+      // Candidate lookup strictly checks candidate session cookies
       token =
         cookieStore.get("better-auth.session_token")?.value ||
         cookieStore.get("__Secure-better-auth.session_token")?.value ||
         cookieStore.get("better-auth.session")?.value;
     } else {
+      // Unspecified: try admin_session_token first, then candidate token
       token =
         cookieStore.get("admin_session_token")?.value ||
         cookieStore.get("__Secure-admin_session_token")?.value ||
@@ -32,29 +34,7 @@ export async function getSessionFromRequest(targetRole?: "admin" | "candidate") 
       return null;
     }
 
-    // 1. Try Better Auth API if header matches
-    try {
-      const customHeaders = new Headers(await headers());
-      customHeaders.set("cookie", `better-auth.session_token=${token}`);
-      const session = await auth.api.getSession({
-        headers: customHeaders,
-      });
-
-      if (session && session.user) {
-        const role = (session.user as { role?: string }).role || "candidate";
-        if (targetRole === "admin" && role !== "admin") {
-          // Token belongs to non-admin
-        } else if (targetRole === "candidate" && role === "admin") {
-          // Token belongs to admin
-        } else {
-          return session;
-        }
-      }
-    } catch {
-      // Fall through to database lookup
-    }
-
-    // 2. Direct Cookie + Database Session Lookup Fallback
+    // Direct Database Session Lookup
     const dbSessions = await db
       .select()
       .from(sessions)
@@ -82,6 +62,7 @@ export async function getSessionFromRequest(targetRole?: "admin" | "candidate") 
 
     const u = userRecords[0];
 
+    // Enforce strict role isolation
     if (targetRole === "admin" && u.role !== "admin") {
       return null;
     }

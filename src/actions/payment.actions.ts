@@ -2,20 +2,27 @@
 
 import { paymentProofSchema } from "@/validators/payment.schema";
 import { CandidateService } from "@/services/candidate.service";
+import { getCurrentCandidateProfileAction } from "@/actions/candidate.actions";
 import { logger } from "@/lib/logger";
 
 export async function submitPaymentProofAction(formData: unknown) {
   try {
     const validated = paymentProofSchema.parse(formData);
 
+    let candidateId = validated.candidateId;
+    const profileRes = await getCurrentCandidateProfileAction();
+    if (profileRes.success && profileRes.data) {
+      candidateId = profileRes.data.id;
+    }
+
     const updatedCandidate = await CandidateService.updatePaymentSubmission(
-      validated.candidateId,
+      candidateId,
       validated.transactionRef,
       validated.paymentProofKey
     );
 
     logger.info("auth", "Payment proof submitted successfully", {
-      candidateId: validated.candidateId,
+      candidateId,
       transactionRef: validated.transactionRef,
     });
 

@@ -35,7 +35,10 @@ interface FetchedDoc {
   verificationStatus: string;
 }
 
+import { useRouter } from "next/navigation";
+
 export default function CandidateDocumentsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [candidateId, setCandidateId] = useState<string | null>(null);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
@@ -257,9 +260,10 @@ export default function CandidateDocumentsPage() {
       setIsFinalSubmitted(true);
       toast({
         title: "Documents Finalized & Submitted",
-        description: "All mandatory documents have been submitted to Ghazi Overseas verification team.",
+        description: "All mandatory documents submitted successfully. Redirecting to payment page...",
         variant: "success",
       });
+      router.push("/candidate/payment");
     }, 1000);
   };
 

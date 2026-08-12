@@ -101,7 +101,7 @@ export class CandidateService {
           paymentProofKey: proofKey || null,
           updatedAt: new Date(),
         })
-        .where(eq(candidates.id, candidateId))
+        .where(or(eq(candidates.id, candidateId), eq(candidates.userId, candidateId)))
         .returning();
 
       logger.info("database", "Candidate submitted payment proof", { candidateId, transactionRef });

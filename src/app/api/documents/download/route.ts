@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (r2Err: unknown) {
     const msg = r2Err instanceof Error ? r2Err.message : "R2 stream error";
-    logger.warn("download", "getFileFromR2 fallback trigger", { key, error: msg });
+    logger.warn("upload", "getFileFromR2 fallback trigger", { key, error: msg });
   }
 
   // 2. Try R2 Presigned Download URL redirect

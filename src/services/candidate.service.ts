@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { candidates } from "@/db/schema/candidates";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { CandidateStatus, VerificationStatus } from "@/types";
 

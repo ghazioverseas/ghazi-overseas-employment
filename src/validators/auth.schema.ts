@@ -12,6 +12,7 @@ export const candidateRegisterSchema = z
     fatherName: z.string().min(3, "Father's name is required"),
     cnic: z.string().regex(/^\d{5}-\d{7}-\d{1}$/, "CNIC must follow format 12345-1234567-1"),
     passportNumber: z.string().optional(),
+    noPassport: z.boolean().optional(),
     dateOfBirth: z.string().min(1, "Date of birth is required"),
     gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender selection is required" }),
     phone: z.string().regex(/^(\+92|03)\d{9}$/, "Valid Pakistani phone number required (e.g. 03001234567)"),
@@ -27,9 +28,21 @@ export const candidateRegisterSchema = z
     yearsOfExperience: z.coerce.number().min(0, "Years of experience is required"),
     education: z.string().min(2, "Education level is required"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
+      });
+    }
+    if (!data.noPassport && (!data.passportNumber || data.passportNumber.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passport number is required (or check 'I don't have a passport')",
+        path: ["passportNumber"],
+      });
+    }
   });
 
 export const forgotPasswordSchema = z.object({

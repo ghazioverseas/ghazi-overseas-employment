@@ -20,6 +20,7 @@ export default function CandidateProfilePage() {
     fatherName: "",
     cnic: "",
     passportNumber: "",
+    noPassport: false,
     phone: "",
     whatsapp: "",
     email: "",
@@ -36,11 +37,14 @@ export default function CandidateProfilePage() {
         const res = await getCurrentCandidateProfileAction();
         if (res.success && res.data) {
           const cand = res.data;
+          const rawPass = cand.passportNumber || "";
+          const noPass = rawPass === "N/A" || !rawPass;
           setFormData({
             fullName: cand.fullName || "",
             fatherName: cand.fatherName || "",
             cnic: cand.cnic || "",
-            passportNumber: cand.passportNumber || "",
+            passportNumber: noPass ? "" : rawPass,
+            noPassport: noPass,
             phone: cand.phone || "",
             whatsapp: cand.whatsapp || "",
             email: cand.email || "",
@@ -72,13 +76,23 @@ export default function CandidateProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.noPassport && (!formData.passportNumber || formData.passportNumber.trim() === "")) {
+      toast({
+        title: "Validation Error",
+        description: "Passport Number is mandatory unless 'I don't have a passport' is checked.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await updateCandidateProfileAction({
         fullName: formData.fullName,
         fatherName: formData.fatherName,
         cnic: formData.cnic,
-        passportNumber: formData.passportNumber,
+        passportNumber: formData.noPassport ? "N/A" : formData.passportNumber.trim(),
         phone: formData.phone,
         whatsapp: formData.whatsapp,
         city: formData.city,
@@ -184,13 +198,33 @@ export default function CandidateProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="passportNumber">Passport Number</Label>
+                <Label htmlFor="passportNumber">Passport Number *</Label>
                 <Input
                   id="passportNumber"
-                  value={formData.passportNumber}
+                  value={formData.noPassport ? "" : formData.passportNumber}
                   onChange={(e) => setFormData({ ...formData, passportNumber: e.target.value })}
-                  placeholder="Passport number"
+                  placeholder={formData.noPassport ? "N/A (No Passport)" : "Passport number (e.g. AB1234567)"}
+                  disabled={formData.noPassport}
                 />
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="noPassport"
+                    checked={formData.noPassport}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        noPassport: checked,
+                        passportNumber: checked ? "" : formData.passportNumber,
+                      });
+                    }}
+                    className="h-4 w-4 rounded border-[#D7E8D8] text-[#167A3D] focus:ring-[#167A3D]"
+                  />
+                  <Label htmlFor="noPassport" className="text-xs text-slate-700 font-medium cursor-pointer">
+                    I don&apos;t have a passport
+                  </Label>
+                </div>
               </div>
 
               <div className="space-y-1.5">

@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<CandidateRegisterInput>({
     resolver: zodResolver(candidateRegisterSchema),
@@ -32,8 +33,11 @@ export default function RegisterPage() {
       country: "Pakistan",
       gender: "Male",
       yearsOfExperience: 2,
+      noPassport: false,
     },
   });
+
+  const noPassport = watch("noPassport");
 
   // If already logged in as candidate, redirect to candidate dashboard in background
   useEffect(() => {
@@ -136,8 +140,27 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="passportNumber">Passport Number (Optional)</Label>
-                  <Input id="passportNumber" placeholder="AB1234567" {...register("passportNumber")} />
+                  <Label htmlFor="passportNumber">Passport Number *</Label>
+                  <Input
+                    id="passportNumber"
+                    placeholder={noPassport ? "N/A (No Passport)" : "AB1234567"}
+                    disabled={noPassport}
+                    {...register("passportNumber")}
+                  />
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="noPassport"
+                      className="h-4 w-4 rounded border-[#D7E8D8] text-[#167A3D] focus:ring-[#167A3D]"
+                      {...register("noPassport")}
+                    />
+                    <Label htmlFor="noPassport" className="text-xs text-slate-700 font-medium cursor-pointer">
+                      I don&apos;t have a passport
+                    </Label>
+                  </div>
+                  {errors.passportNumber && (
+                    <p className="text-xs text-red-600 font-medium">{errors.passportNumber.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

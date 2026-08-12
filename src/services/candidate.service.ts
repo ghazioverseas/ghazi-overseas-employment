@@ -63,7 +63,7 @@ export class CandidateService {
           fullName: data.fullName,
           fatherName: data.fatherName,
           cnic: data.cnic,
-          passportNumber: data.passportNumber,
+          passportNumber: data.passportNumber && data.passportNumber !== "N/A" && data.passportNumber.trim() !== "" ? data.passportNumber.trim() : null,
           dateOfBirth: data.dateOfBirth,
           gender: data.gender,
           phone: data.phone,
@@ -158,7 +158,7 @@ export class CandidateService {
       if (data.fullName !== undefined) payload.fullName = data.fullName;
       if (data.fatherName !== undefined) payload.fatherName = data.fatherName;
       if (data.cnic !== undefined) payload.cnic = data.cnic;
-      if (data.passportNumber !== undefined) payload.passportNumber = data.passportNumber;
+      if (data.passportNumber !== undefined) payload.passportNumber = data.passportNumber && data.passportNumber !== "N/A" && data.passportNumber.trim() !== "" ? data.passportNumber.trim() : null;
       if (data.dateOfBirth !== undefined) payload.dateOfBirth = data.dateOfBirth;
       if (data.gender !== undefined) payload.gender = data.gender;
       if (data.phone !== undefined) payload.phone = data.phone;

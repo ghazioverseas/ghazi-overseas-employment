@@ -12,14 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { UserPlus, AlertCircle, Loader2 } from "lucide-react";
+import { UserPlus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -36,25 +35,23 @@ export default function RegisterPage() {
     },
   });
 
-  // If already logged in, redirect to appropriate dashboard
+  // If already logged in as candidate, redirect to candidate dashboard in background
   useEffect(() => {
+    let active = true;
     async function checkExistingSession() {
       try {
-        const res = await getAuthSessionAction();
-        if (res.success && res.user) {
-          if (res.user.role === "admin") {
-            router.replace("/admin/dashboard");
-          } else {
-            router.replace("/candidate/dashboard");
-          }
-          return;
+        const res = await getAuthSessionAction("candidate");
+        if (active && res.success && res.user) {
+          router.replace("/candidate/dashboard");
         }
       } catch {
-        // Not logged in — show register form
+        // Ignore session lookup errors on register page
       }
-      setCheckingSession(false);
     }
     checkExistingSession();
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const onSubmit = async (data: CandidateRegisterInput) => {
@@ -63,27 +60,21 @@ export default function RegisterPage() {
     try {
       const res = await registerCandidateAction(data);
       if (!res.success) {
-        setErrorMessage(res.error || "Registration failed.");
-        toast({ title: "Registration Error", description: res.error, variant: "destructive" });
+        const err = res.error || "Registration failed.";
+        setErrorMessage(err);
+        toast({ title: "Registration Error", description: err, variant: "destructive" });
       } else {
         toast({ title: "Registration Successful", description: "Account created! Redirecting to Dashboard...", variant: "success" });
-        // Automatically redirect to Candidate Dashboard
         window.location.href = "/candidate/dashboard";
       }
-    } catch {
-      setErrorMessage("An unexpected error occurred.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred during registration.";
+      setErrorMessage(msg);
+      toast({ title: "Registration Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
-
-  if (checkingSession) {
-    return (
-      <div className="flex min-h-[calc(100vh-160px)] items-center justify-center bg-[#F8FAF8]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-[calc(100vh-160px)] items-center justify-center p-4 py-12 bg-[#F8FAF8]">
@@ -106,7 +97,20 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            method="POST"
+            action="javascript:void(0);"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit(onSubmit, (formErrors) => {
+                const firstErr = Object.values(formErrors)[0]?.message;
+                if (firstErr) {
+                  setErrorMessage(String(firstErr));
+                }
+              })(e);
+            }}
+            className="space-y-6"
+          >
             {/* Section 1: Personal Details */}
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-[#167A3D] mb-3 pb-1 border-b border-[#D7E8D8]">
@@ -116,19 +120,19 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="fullName">Full Name (As per CNIC/Passport) *</Label>
                   <Input id="fullName" placeholder="Muhammad Ali" {...register("fullName")} />
-                  {errors.fullName && <p className="text-xs text-red-600">{errors.fullName.message}</p>}
+                  {errors.fullName && <p className="text-xs text-red-600 font-medium">{errors.fullName.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="fatherName">Father&apos;s Name *</Label>
                   <Input id="fatherName" placeholder="Tariq Ali" {...register("fatherName")} />
-                  {errors.fatherName && <p className="text-xs text-red-[#167A3D]">{errors.fatherName.message}</p>}
+                  {errors.fatherName && <p className="text-xs text-red-600 font-medium">{errors.fatherName.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="cnic">CNIC Number *</Label>
                   <Input id="cnic" placeholder="12345-1234567-1" {...register("cnic")} />
-                  {errors.cnic && <p className="text-xs text-red-600">{errors.cnic.message}</p>}
+                  {errors.cnic && <p className="text-xs text-red-600 font-medium">{errors.cnic.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -139,7 +143,7 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="dateOfBirth">Date of Birth *</Label>
                   <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
-                  {errors.dateOfBirth && <p className="text-xs text-red-600">{errors.dateOfBirth.message}</p>}
+                  {errors.dateOfBirth && <p className="text-xs text-red-600 font-medium">{errors.dateOfBirth.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -162,19 +166,19 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Mobile Phone *</Label>
                   <Input id="phone" placeholder="03001234567" {...register("phone")} />
-                  {errors.phone && <p className="text-xs text-red-600">{errors.phone.message}</p>}
+                  {errors.phone && <p className="text-xs text-red-600 font-medium">{errors.phone.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="whatsapp">WhatsApp Number *</Label>
                   <Input id="whatsapp" placeholder="03001234567" {...register("whatsapp")} />
-                  {errors.whatsapp && <p className="text-xs text-red-600">{errors.whatsapp.message}</p>}
+                  {errors.whatsapp && <p className="text-xs text-red-600 font-medium">{errors.whatsapp.message}</p>}
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="email">Email Address *</Label>
                   <Input id="email" type="email" placeholder="name@domain.com" {...register("email")} />
-                  {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
+                  {errors.email && <p className="text-xs text-red-600 font-medium">{errors.email.message}</p>}
                 </div>
               </div>
             </div>
@@ -188,19 +192,19 @@ export default function RegisterPage() {
                 <div className="space-y-1.5 sm:col-span-3">
                   <Label htmlFor="address">Full Address *</Label>
                   <Input id="address" placeholder="House / Street / Sector address" {...register("address")} />
-                  {errors.address && <p className="text-xs text-red-600">{errors.address.message}</p>}
+                  {errors.address && <p className="text-xs text-red-600 font-medium">{errors.address.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="city">City *</Label>
                   <Input id="city" placeholder="Karachi / Lahore / Islamabad" {...register("city")} />
-                  {errors.city && <p className="text-xs text-red-600">{errors.city.message}</p>}
+                  {errors.city && <p className="text-xs text-red-600 font-medium">{errors.city.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="province">Province *</Label>
                   <Input id="province" placeholder="Sindh / Punjab / KPK" {...register("province")} />
-                  {errors.province && <p className="text-xs text-red-600">{errors.province.message}</p>}
+                  {errors.province && <p className="text-xs text-red-600 font-medium">{errors.province.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -219,19 +223,19 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="profession">Trade Profession / Category *</Label>
                   <Input id="profession" placeholder="Electrician / Welder / Driver / Nurse" {...register("profession")} />
-                  {errors.profession && <p className="text-xs text-red-600">{errors.profession.message}</p>}
+                  {errors.profession && <p className="text-xs text-red-600 font-medium">{errors.profession.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="yearsOfExperience">Years of Experience *</Label>
                   <Input id="yearsOfExperience" type="number" min="0" {...register("yearsOfExperience")} />
-                  {errors.yearsOfExperience && <p className="text-xs text-red-600">{errors.yearsOfExperience.message}</p>}
+                  {errors.yearsOfExperience && <p className="text-xs text-red-600 font-medium">{errors.yearsOfExperience.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="education">Highest Education *</Label>
                   <Input id="education" placeholder="Matric / DAE / Bachelor / Diploma" {...register("education")} />
-                  {errors.education && <p className="text-xs text-red-600">{errors.education.message}</p>}
+                  {errors.education && <p className="text-xs text-red-600 font-medium">{errors.education.message}</p>}
                 </div>
               </div>
             </div>
@@ -245,14 +249,14 @@ export default function RegisterPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="password">Password *</Label>
                   <Input id="password" type="password" placeholder="••••••••" {...register("password")} />
-                  {errors.password && <p className="text-xs text-red-600">{errors.password.message}</p>}
+                  {errors.password && <p className="text-xs text-red-600 font-medium">{errors.password.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="confirmPassword">Confirm Password *</Label>
                   <Input id="confirmPassword" type="password" placeholder="••••••••" {...register("confirmPassword")} />
                   {errors.confirmPassword && (
-                    <p className="text-xs text-red-600">{errors.confirmPassword.message}</p>
+                    <p className="text-xs text-red-600 font-medium">{errors.confirmPassword.message}</p>
                   )}
                 </div>
               </div>

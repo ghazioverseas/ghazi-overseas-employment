@@ -11,14 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { LogIn, AlertCircle, Loader2 } from "lucide-react";
+import { LogIn, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -30,25 +29,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  // If already logged in, redirect to appropriate dashboard
+  // If already logged in as candidate, redirect to candidate dashboard asynchronously
   useEffect(() => {
+    let active = true;
     async function checkExistingSession() {
       try {
-        const res = await getAuthSessionAction();
-        if (res.success && res.user) {
-          if (res.user.role === "admin") {
-            router.replace("/admin/dashboard");
-          } else {
-            router.replace("/candidate/dashboard");
-          }
-          return;
+        const res = await getAuthSessionAction("candidate");
+        if (active && res.success && res.user) {
+          router.replace("/candidate/dashboard");
         }
       } catch {
-        // Not logged in — show login form
+        // Ignore session lookup errors on login page
       }
-      setCheckingSession(false);
     }
     checkExistingSession();
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const onSubmit = async (data: LoginInput) => {
@@ -57,26 +54,21 @@ export default function LoginPage() {
     try {
       const res = await loginAction(data);
       if (!res.success) {
-        setErrorMessage(res.error || "Login failed.");
-        toast({ title: "Authentication Error", description: res.error, variant: "destructive" });
+        const err = res.error || "Invalid credentials provided.";
+        setErrorMessage(err);
+        toast({ title: "Authentication Failed", description: err, variant: "destructive" });
       } else {
         toast({ title: "Welcome Back", description: "Successfully authenticated.", variant: "success" });
         window.location.href = "/candidate/dashboard";
       }
-    } catch {
-      setErrorMessage("An unexpected error occurred.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected authentication error occurred.";
+      setErrorMessage(msg);
+      toast({ title: "Authentication Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
-
-  if (checkingSession) {
-    return (
-      <div className="flex min-h-[calc(100vh-160px)] items-center justify-center bg-[#F8FAF8]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-[calc(100vh-160px)] items-center justify-center p-4 py-12 bg-[#F8FAF8]">
@@ -99,7 +91,21 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+          <form
+            method="POST"
+            action="javascript:void(0);"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit(onSubmit, (formErrors) => {
+                const firstErr = Object.values(formErrors)[0]?.message;
+                if (firstErr) {
+                  setErrorMessage(String(firstErr));
+                }
+              })(e);
+            }}
+            className="space-y-4"
+            autoComplete="off"
+          >
             <div className="space-y-1.5">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -110,7 +116,7 @@ export default function LoginPage() {
                 {...register("email")}
               />
               {errors.email && (
-                <p className="text-xs text-red-600">{errors.email.message}</p>
+                <p className="text-xs text-red-600 font-medium">{errors.email.message}</p>
               )}
             </div>
 
@@ -132,7 +138,7 @@ export default function LoginPage() {
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-xs text-red-600">{errors.password.message}</p>
+                <p className="text-xs text-red-600 font-medium">{errors.password.message}</p>
               )}
             </div>
 

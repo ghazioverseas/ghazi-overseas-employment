@@ -11,14 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Eye, EyeOff, AlertCircle, Lock, Loader2 } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, AlertCircle, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GhaziLogo } from "@/components/common/GhaziLogo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
@@ -31,26 +30,23 @@ export default function AdminLoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  // If already logged in as admin, redirect to admin dashboard
+  // If already logged in as admin, redirect to admin dashboard in background
   useEffect(() => {
+    let active = true;
     async function checkExistingSession() {
       try {
-        const res = await getAuthSessionAction();
-        if (res.success && res.user) {
-          if (res.user.role === "admin") {
-            router.replace("/admin/dashboard");
-          } else {
-            // Candidate user trying to access admin login — send them to candidate dashboard
-            router.replace("/candidate/dashboard");
-          }
-          return;
+        const res = await getAuthSessionAction("admin");
+        if (active && res.success && res.user && res.user.role === "admin") {
+          router.replace("/admin/dashboard");
         }
       } catch {
-        // Not logged in — show admin login form
+        // Ignore session lookup errors on login page
       }
-      setCheckingSession(false);
     }
     checkExistingSession();
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const onSubmit = async (data: LoginInput) => {
@@ -59,28 +55,21 @@ export default function AdminLoginPage() {
     try {
       const res = await adminLoginAction(data);
       if (!res.success) {
-        setErrorMessage(res.error || "Admin authentication failed.");
-        toast({ title: "Access Denied", description: res.error, variant: "destructive" });
+        const err = res.error || "Admin authentication failed.";
+        setErrorMessage(err);
+        toast({ title: "Access Denied", description: err, variant: "destructive" });
       } else {
         toast({ title: "Admin Authenticated", description: "Welcome to Admin Control Center.", variant: "success" });
-        // Redirect to Admin Dashboard
         window.location.href = "/admin/dashboard";
       }
-    } catch {
-      setErrorMessage("An unexpected authentication error occurred.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected authentication error occurred.";
+      setErrorMessage(msg);
+      toast({ title: "Authentication Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
-
-  if (checkingSession) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAF8]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#167A3D]" />
-      </div>
-    );
-  }
-
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-[#F8FAF8]">
@@ -110,7 +99,21 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+          <form
+            method="POST"
+            action="javascript:void(0);"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit(onSubmit, (formErrors) => {
+                const firstErr = Object.values(formErrors)[0]?.message;
+                if (firstErr) {
+                  setErrorMessage(String(firstErr));
+                }
+              })(e);
+            }}
+            className="space-y-4"
+            autoComplete="off"
+          >
             <div className="space-y-1.5">
               <Label htmlFor="admin-email">Admin Email Address</Label>
               <Input

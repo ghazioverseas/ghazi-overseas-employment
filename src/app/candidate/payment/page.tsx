@@ -161,8 +161,10 @@ export default function CandidatePaymentPage() {
           {/* Card 1: Bank Transfer */}
           <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
             <div className="bg-[#167A3D] text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-extrabold">
-                <Building2 className="h-4 w-4" /> Bank Account Transfer
+              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/payments/meezan-bank-logo.png" alt="Meezan Bank" className="h-8 w-8 object-contain rounded-full bg-white p-0.5 shadow-sm" />
+                <span>Bank Account Transfer</span>
               </div>
               <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Recommended</span>
             </div>
@@ -223,8 +225,10 @@ export default function CandidatePaymentPage() {
           {/* Card 2: EasyPaisa */}
           <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
             <div className="bg-emerald-700 text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-extrabold">
-                <Smartphone className="h-4 w-4" /> EasyPaisa Mobile Wallet
+              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/payments/easypaisa-logo.png" alt="EasyPaisa" className="h-7 w-auto max-w-[70px] object-contain rounded bg-white p-0.5 shadow-sm" />
+                <span>EasyPaisa Mobile Wallet</span>
               </div>
               <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Instant</span>
             </div>
@@ -268,8 +272,10 @@ export default function CandidatePaymentPage() {
           {/* Card 3: JazzCash */}
           <Card className="border-[#D7E8D8] bg-white shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between">
             <div className="bg-red-700 text-white p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-extrabold">
-                <Smartphone className="h-4 w-4" /> JazzCash Mobile Wallet
+              <div className="flex items-center gap-2.5 text-xs font-extrabold">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/payments/jazzcash-logo.png" alt="JazzCash" className="h-7 w-auto max-w-[70px] object-contain rounded bg-white p-0.5 shadow-sm" />
+                <span>JazzCash Mobile Wallet</span>
               </div>
               <span className="text-[10px] bg-white/20 text-white font-bold px-2 py-0.5 rounded-full">Instant</span>
             </div>
